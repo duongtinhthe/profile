@@ -9,7 +9,7 @@ NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 
 # 🔑 ĐẶT MẬT KHẨU CỦA BẠN TẠI ĐÂY (Thay '123456' thành mật khẩu bạn muốn)
-ADMIN_PASSWORD = "123"
+ADMIN_PASSWORD = "17022006"
 
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
