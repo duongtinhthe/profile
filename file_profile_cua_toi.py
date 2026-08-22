@@ -2,12 +2,13 @@
 import streamlit as st
 import base64
 import os
+import re
 
 st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wide")
 
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
-AUDIO_FILE = "current_bgm.mp3"
+YOUTUBE_FILE = "youtube_url.txt"
 
 # 🔑 KHÓA BÍ MẬT TRÊN URL
 SECRET_KEY = "17022006"
@@ -21,22 +22,31 @@ def get_base64(file_path):
             return base64.b64encode(f.read()).decode('utf-8')
     return ""
 
+def extract_youtube_id(url):
+    pattern = r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
+    match = re.search(pattern, url)
+    return match.group(1) if match else "jfKfPfyJRdk" # Video mặc định nếu link lỗi
+
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
-
-# Ưu tiên lấy file MP3 mới tải lên, nếu chưa có thì dùng file mặc định
-if os.path.exists(AUDIO_FILE):
-    current_audio_path = AUDIO_FILE
-else:
-    current_audio_path = 'Sơn Tùng M-TP x Tyga - Come My Way (Acigode Remix).mp3'
-
 img_base64 = get_base64(image_path)
-audio_base64 = get_base64(current_audio_path)
 
+# Đọc link YouTube đã lưu
+saved_yt_url = "https://www.youtube.com/watch?v=jfKfPfyJRdk"
+if os.path.exists(YOUTUBE_FILE):
+    with open(YOUTUBE_FILE, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+        if content:
+            saved_yt_url = content
+
+yt_id = extract_youtube_id(saved_yt_url)
+
+# Đọc ghi chú
 saved_note = ""
 if os.path.exists(NOTE_FILE):
     with open(NOTE_FILE, "r", encoding="utf-8") as f:
         saved_note = f.read()
 
+# Đọc bộ sưu tập ảnh
 saved_images_html = ""
 image_list = sorted(os.listdir(IMAGE_DIR))
 for img_name in image_list:
@@ -45,6 +55,7 @@ for img_name in image_list:
     if b64:
         saved_images_html += f'<img src="data:image/png;base64,{b64}" class="img-card">'
 
+# Kiểm tra quyền Admin từ URL (?key=17022006)
 query_params = st.query_params
 is_admin = query_params.get("key") == SECRET_KEY
 
@@ -111,21 +122,33 @@ html_code = f"""
             display: flex; align-items: center; justify-content: center;
         }}
 
-        .audio-player-container {{
+        .yt-player-container {{
             background: rgba(30, 0, 0, 0.9);
             border: 2px solid #ff0000;
-            padding: 20px;
+            padding: 15px;
             margin-top: 20px;
             box-shadow: 0 0 25px rgba(255, 0, 0, 0.5);
+            position: relative; z-index: 3;
         }}
-        audio {{
-            width: 100%;
-            filter: invert(100%) hue-rotate(180deg) brightness(1.5);
+
+        .video-responsive {{
+            overflow: hidden;
+            padding-bottom: 56.25%;
+            position: relative;
+            height: 0;
         }}
+
+        .video-responsive iframe {{
+            left: 0; top: 0;
+            height: 100%; width: 100%;
+            position: absolute;
+            border: none;
+        }}
+
         .track-name {{
             font-family: 'Orbitron', sans-serif;
             font-size: 14px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 2px;
             color: #ff0000;
@@ -147,11 +170,15 @@ html_code = f"""
         </div>
 
         <div class="section">
-            <div class="audio-player-container">
-                <div class="track-name">Now Playing: Background Audio</div>
-                <audio id="audioPlayer" controls crossorigin="anonymous">
-                    <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
-                </audio>
+            <div class="yt-player-container">
+                <div class="track-name">🎬 Cyberpunk Youtube Player</div>
+                <div class="video-responsive">
+                    <iframe 
+                        src="https://www.youtube.com/embed/{yt_id}?enablejsapi=1&autoplay=0&rel=0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                </div>
             </div>
         </div>
 
@@ -176,37 +203,6 @@ html_code = f"""
         }}
         window.addEventListener('resize', initCanvas); initCanvas();
 
-        const audio = document.getElementById('audioPlayer');
-        const mainContainer = document.getElementById('mainContainer');
-        let audioCtx, analyser, dataArray;
-
-        audio.onplay = () => {{
-            if (!audioCtx) {{
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioCtx.createMediaElementSource(audio);
-                analyser = audioCtx.createAnalyser();
-                source.connect(analyser); analyser.connect(audioCtx.destination);
-                analyser.fftSize = 256; 
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-                visualize();
-            }}
-        }};
-
-        function drawLightning(x1, y1, x2, y2, intensity) {{
-            vCtx.strokeStyle = `rgba(255, 30, 30, ${{intensity}})`;
-            vCtx.lineWidth = 2 + Math.random() * 2;
-            vCtx.shadowBlur = 20; vCtx.shadowColor = '#ff0000';
-            vCtx.beginPath();
-            vCtx.moveTo(x1, y1);
-            let steps = 6;
-            for(let i=1; i<=steps; i++) {{
-                let tx = x1 + (x2-x1)*(i/steps) + (Math.random()-0.5)*25*intensity;
-                let ty = y1 + (y2-y1)*(i/steps) + (Math.random()-0.5)*25*intensity;
-                vCtx.lineTo(tx, ty);
-            }}
-            vCtx.stroke();
-        }}
-
         function drawCurvedWave(points, color, width, glow) {{
             vCtx.save();
             vCtx.strokeStyle = color;
@@ -227,17 +223,8 @@ html_code = f"""
         }}
 
         function visualize() {{
-            if (!analyser) return;
             requestAnimationFrame(visualize);
-            analyser.getByteFrequencyData(dataArray);
-
-            phase += 0.08;
-            let sum = 0; 
-            for(let i = 0; i < 20; i++) sum += dataArray[i];
-            let avg = sum / 20;
-
-            let glow = 30 + (avg / 2);
-            mainContainer.style.boxShadow = `0 0 ${{glow}}px rgba(255, 0, 0, ${{0.5 + avg/200}})`;
+            phase += 0.05;
 
             vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
 
@@ -249,8 +236,7 @@ html_code = f"""
             let topPts = [], botPts = [], leftPts = [], rightPts = [];
 
             for (let i = 0; i <= len; i++) {{
-                let freq = dataArray[i % dataArray.length] / 255.0;
-                let amp = freq * 45 + Math.sin(phase + i * 0.3) * 8; 
+                let amp = Math.sin(phase + i * 0.35) * 12 + Math.cos(phase * 1.5 + i * 0.2) * 8;
 
                 topPts.push({{ x: offset + (i / len) * w, y: offset - amp }});
                 botPts.push({{ x: offset + (i / len) * w, y: offset + h + amp }});
@@ -263,19 +249,12 @@ html_code = f"""
             drawCurvedWave(leftPts, '#ff0000', 3, 20);
             drawCurvedWave(rightPts, '#ff0000', 3, 20);
 
-            let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 6 }}));
-            let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 6 }}));
+            let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 5 }}));
+            let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 5 }}));
             drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
             drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
-
-            if(avg > 135) {{
-                let intensity = (avg - 135) / 120;
-                if(Math.random() > 0.25) drawLightning(offset, offset, offset + w, offset, intensity);
-                if(Math.random() > 0.25) drawLightning(offset + w, offset, offset + w, offset + h, intensity);
-                if(Math.random() > 0.25) drawLightning(offset + w, offset + h, offset, offset + h, intensity);
-                if(Math.random() > 0.25) drawLightning(offset, offset + h, offset, offset, intensity);
-            }}
         }}
+        visualize();
 
         class P {{
             constructor() {{ this.reset(); }}
@@ -309,14 +288,14 @@ html_code = f"""
             let size = Math.random()*4 + 'px';
             star.style.width = size; star.style.height = size;
             star.style.top = Math.random()*100 + '%'; star.style.left = Math.random()*100 + '%';
-            mainContainer.appendChild(star);
+            document.getElementById('mainContainer').appendChild(star);
         }}
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=950, scrolling=True)
+st.components.v1.html(html_code, height=1050, scrolling=True)
 
 # --- KHU VỰC ADMIN TRÊN SIDEBAR ---
 if is_admin:
@@ -324,15 +303,14 @@ if is_admin:
     st.sidebar.success("Đã mở khóa quyền quản trị!")
     st.sidebar.markdown("---")
 
-    # 1. Quản lý Nhạc MP3
-    st.sidebar.subheader("🎵 Thay thế nhạc MP3")
-    uploaded_audio = st.sidebar.file_uploader("Tải lên bài hát MP3 mới:", type=['mp3'])
-    if st.sidebar.button("Cập nhật nhạc mới"):
-        if uploaded_audio:
-            with open(AUDIO_FILE, "wb") as f:
-                f.write(uploaded_audio.getbuffer())
-            st.sidebar.success("Đã thay nhạc mới!")
-            st.rerun()
+    # 1. Quản lý Link YouTube
+    st.sidebar.subheader("📺 Cập nhật Video YouTube")
+    new_yt_url = st.sidebar.text_input("Dán link YouTube mới:", value=saved_yt_url)
+    if st.sidebar.button("Đổi Video / Nhạc"):
+        with open(YOUTUBE_FILE, "w", encoding="utf-8") as f:
+            f.write(new_yt_url.strip())
+        st.sidebar.success("Đã cập nhật Video mới!")
+        st.rerun()
 
     st.sidebar.markdown("---")
 
