@@ -8,7 +8,7 @@ st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wi
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 
-# 🔑 KHÓA BÍ MẬT TRÊN URL (Thay đổi nếu muốn)
+# 🔑 KHÓA BÍ MẬT TRÊN URL
 SECRET_KEY = "17022006"
 
 if not os.path.exists(IMAGE_DIR):
@@ -38,11 +38,9 @@ for img_name in sorted(os.listdir(IMAGE_DIR)):
     if b64:
         saved_images_html += f'<img src="data:image/png;base64,{b64}" class="img-card">'
 
-# Kiểm tra tham số trên URL (?key=17022006)
 query_params = st.query_params
 is_admin = query_params.get("key") == SECRET_KEY
 
-# Ẩn nút mũi tên Sidebar nếu người dùng truy cập link thường
 if not is_admin:
     st.markdown(
         """
@@ -78,8 +76,8 @@ html_code = f"""
         }}
 
         #viz-canvas {{
-            position: absolute; top: -30px; left: -30px;
-            width: calc(100% + 60px); height: calc(100% + 60px);
+            position: absolute; top: -40px; left: -40px;
+            width: calc(100% + 80px); height: calc(100% + 80px);
             pointer-events: none; z-index: 5;
         }}
 
@@ -163,6 +161,7 @@ html_code = f"""
         const vCanvas = document.getElementById('viz-canvas');
         const vCtx = vCanvas.getContext('2d');
         let particles = [];
+        let phase = 0;
 
         function initCanvas() {{
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -180,16 +179,16 @@ html_code = f"""
                 const source = audioCtx.createMediaElementSource(audio);
                 analyser = audioCtx.createAnalyser();
                 source.connect(analyser); analyser.connect(audioCtx.destination);
-                analyser.fftSize = 128; 
+                analyser.fftSize = 256; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 visualize();
             }}
         }};
 
         function drawLightning(x1, y1, x2, y2, intensity) {{
-            vCtx.strokeStyle = `rgba(255, 0, 50, ${{intensity}})`;
+            vCtx.strokeStyle = `rgba(255, 30, 30, ${{intensity}})`;
             vCtx.lineWidth = 2 + Math.random() * 2;
-            vCtx.shadowBlur = 20; vCtx.shadowColor = '#ff0033';
+            vCtx.shadowBlur = 20; vCtx.shadowColor = '#ff0000';
             vCtx.beginPath();
             vCtx.moveTo(x1, y1);
             let steps = 6;
@@ -201,52 +200,81 @@ html_code = f"""
             vCtx.stroke();
         }}
 
+        // Hàm vẽ đường sóng mềm mại dựa trên Bezier Curves
+        function drawCurvedWave(points, color, width, glow) {{
+            vCtx.save();
+            vCtx.strokeStyle = color;
+            vCtx.lineWidth = width;
+            vCtx.shadowBlur = glow;
+            vCtx.shadowColor = '#ff0000';
+            vCtx.beginPath();
+            vCtx.moveTo(points[0].x, points[0].y);
+
+            for (let i = 0; i < points.length - 1; i++) {{
+                let xc = (points[i].x + points[i + 1].x) / 2;
+                let yc = (points[i].y + points[i + 1].y) / 2;
+                vCtx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+            }}
+            vCtx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+            vCtx.stroke();
+            vCtx.restore();
+        }}
+
         function visualize() {{
             if (!analyser) return;
             requestAnimationFrame(visualize);
             analyser.getByteFrequencyData(dataArray);
 
+            phase += 0.08;
             let sum = 0; 
-            for(let i = 0; i < 15; i++) sum += dataArray[i];
-            let avg = sum / 15;
+            for(let i = 0; i < 20; i++) sum += dataArray[i];
+            let avg = sum / 20;
 
             let glow = 30 + (avg / 2);
             mainContainer.style.boxShadow = `0 0 ${{glow}}px rgba(255, 0, 0, ${{0.5 + avg/200}})`;
 
             vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
 
-            const offset = 30;
+            const offset = 40;
             const w = vCanvas.width - offset * 2;
             const h = vCanvas.height - offset * 2;
-            const numBars = dataArray.length;
+            const len = 32; // Số điểm sóng
 
-            vCtx.fillStyle = '#ff0000';
-            vCtx.shadowBlur = 15;
-            vCtx.shadowColor = '#ff0000';
+            let topPts = [], botPts = [], leftPts = [], rightPts = [];
 
-            for (let i = 0; i < numBars; i++) {{
-                let val = dataArray[i] / 255.0;
-                let barLen = val * 55;
+            for (let i = 0; i <= len; i++) {{
+                let freq = dataArray[i % dataArray.length] / 255.0;
+                let amp = freq * 45 + Math.sin(phase + i * 0.3) * 8; 
 
-                let xTop = offset + (i / numBars) * w;
-                vCtx.fillRect(xTop, offset - barLen, w / numBars - 2, barLen);
-
-                let xBot = offset + (i / numBars) * w;
-                vCtx.fillRect(xBot, offset + h, w / numBars - 2, barLen);
-
-                let yLeft = offset + (i / numBars) * h;
-                vCtx.fillRect(offset - barLen, yLeft, barLen, h / numBars - 2);
-
-                let yRight = offset + (i / numBars) * h;
-                vCtx.fillRect(offset + w, yRight, barLen, h / numBars - 2);
+                // Viền Trên (Top Wave)
+                topPts.push({{ x: offset + (i / len) * w, y: offset - amp }});
+                // Viền Dưới (Bottom Wave)
+                botPts.push({{ x: offset + (i / len) * w, y: offset + h + amp }});
+                // Viền Trái (Left Wave)
+                leftPts.push({{ x: offset - amp, y: offset + (i / len) * h }});
+                // Viền Phải (Right Wave)
+                rightPts.push({{ x: offset + w + amp, y: offset + (i / len) * h }});
             }}
 
-            if(avg > 140) {{
-                let intensity = (avg - 140) / 115;
-                if(Math.random() > 0.3) drawLightning(offset, offset, offset + w, offset, intensity);
-                if(Math.random() > 0.3) drawLightning(offset + w, offset + h, offset + w, offset + h, intensity);
-                if(Math.random() > 0.3) drawLightning(offset + w, offset + h, offset, offset + h, intensity);
-                if(Math.random() > 0.3) drawLightning(offset, offset + h, offset, offset, intensity);
+            // Vẽ dải sóng chính sáng ngời
+            drawCurvedWave(topPts, '#ff0000', 3, 20);
+            drawCurvedWave(botPts, '#ff0000', 3, 20);
+            drawCurvedWave(leftPts, '#ff0000', 3, 20);
+            drawCurvedWave(rightPts, '#ff0000', 3, 20);
+
+            // Vẽ lớp sóng mờ phụ phía sau tạo hiệu ứng chiều sâu (Cyber Motion Blur)
+            let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 6 }}));
+            let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 6 }}));
+            drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
+            drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
+
+            // Bật tia sét khi gặp nhịp Bass dồn
+            if(avg > 135) {{
+                let intensity = (avg - 135) / 120;
+                if(Math.random() > 0.25) drawLightning(offset, offset, offset + w, offset, intensity);
+                if(Math.random() > 0.25) drawLightning(offset + w, offset, offset + w, offset + h, intensity);
+                if(Math.random() > 0.25) drawLightning(offset + w, offset + h, offset, offset + h, intensity);
+                if(Math.random() > 0.25) drawLightning(offset, offset + h, offset, offset, intensity);
             }}
         }}
 
@@ -298,7 +326,6 @@ if is_admin:
     st.sidebar.markdown("---")
     st.sidebar.subheader("⚙️ Quản lý nội dung")
 
-    # 1. Quản lý Ghi chú
     new_note = st.sidebar.text_area("Cập nhật ghi chú mới:", value=saved_note)
     if st.sidebar.button("Lưu Ghi Chú"):
         with open(NOTE_FILE, "w", encoding="utf-8") as f:
@@ -308,7 +335,6 @@ if is_admin:
 
     st.sidebar.markdown("---")
 
-    # 2. Quản lý Bộ sưu tập Ảnh
     uploaded_files = st.sidebar.file_uploader("Thêm ảnh vào bộ sưu tập:", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
     if st.sidebar.button("Tải Ảnh Lên"):
         if uploaded_files:
