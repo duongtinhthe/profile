@@ -2,23 +2,43 @@
 import streamlit as st
 import base64
 import os
+import json
 
-# Cấu hình trang Streamlit
 st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wide")
 
-# Hàm mã hóa file sang Base64 an toàn
+# File lưu ghi chú cố định
+NOTE_FILE = "data_notes.txt"
+IMAGE_DIR = "uploaded_images"
+
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR)
+
+# Hàm mã hóa file sang Base64
 def get_base64(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
             return base64.b64encode(f.read()).decode('utf-8')
     return ""
 
-# Tên file ảnh và mp3 (đặt cùng thư mục trên GitHub)
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
 audio_path = 'Sơn Tùng M-TP x Tyga - Come My Way (Acigode Remix).mp3'
 
 img_base64 = get_base64(image_path)
 audio_base64 = get_base64(audio_path)
+
+# Đọc ghi chú đã lưu từ trước
+saved_note = ""
+if os.path.exists(NOTE_FILE):
+    with open(NOTE_FILE, "r", encoding="utf-8") as f:
+        saved_note = f.read()
+
+# Đọc danh sách ảnh đã tải lên từ trước
+saved_images_html = ""
+for img_name in sorted(os.listdir(IMAGE_DIR)):
+    img_p = os.path.join(IMAGE_DIR, img_name)
+    b64 = get_base64(img_p)
+    if b64:
+        saved_images_html += f'<img src="data:image/png;base64,{b64}" class="img-card">'
 
 html_code = f"""
 <!DOCTYPE html>
@@ -63,13 +83,13 @@ html_code = f"""
 
         .section {{ margin-top: 30px; text-align: center; position: relative; z-index: 2; }}
 
-        textarea {{
+        .note-box {{
             width: 100%; height: 120px; padding: 15px;
             background: rgba(30, 0, 0, 0.85); border: 2px solid #ff0000;
             color: #ff0000; font-family: 'Times New Roman', Times, serif;
             text-align: center; font-size: 19px; box-sizing: border-box;
             box-shadow: inset 0 0 15px rgba(255,0,0,0.3);
-            outline: none;
+            display: flex; align-items: center; justify-content: center;
         }}
 
         .audio-player-container {{
@@ -93,14 +113,6 @@ html_code = f"""
             text-shadow: 0 0 5px #ff0000;
         }}
 
-        .upload-btn {{
-            font-size: 32px; background: transparent; color: #ff0000;
-            width: 60px; height: 60px; border: 2px solid #ff0000;
-            cursor: pointer; border-radius: 50%; margin: 20px auto;
-            transition: 0.3s; box-shadow: 0 0 15px rgba(255,0,0,0.6);
-        }}
-        .upload-btn:hover {{ background: #ff0000; color: #000; box-shadow: 0 0 30px #ff0000; }}
-
         #gallery {{ display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px; }}
         .img-card {{ width: 180px; height: 180px; object-fit: cover; border: 2px solid #ff0000; }}
     </style>
@@ -112,7 +124,7 @@ html_code = f"""
         <img src="data:image/jpeg;base64,{img_base64}" class="welcome-img">
 
         <div class="section">
-            <textarea placeholder="NHẬP GHI CHÚ TẠI ĐÂY..."></textarea>
+            <div class="note-box">{saved_note if saved_note else "CHƯA CÓ GHI CHÚ NÀO ĐƯỢC LƯU..."}</div>
         </div>
 
         <div class="section">
@@ -125,9 +137,9 @@ html_code = f"""
         </div>
 
         <div class="section">
-            <input type="file" id="imageInput" accept="image/*" style="display: none;" multiple>
-            <button class="upload-btn" onclick="document.getElementById('imageInput').click()">+</button>
-            <div id="gallery"></div>
+            <div id="gallery">
+                {saved_images_html}
+            </div>
         </div>
     </div>
 
@@ -230,20 +242,37 @@ html_code = f"""
             star.style.top = Math.random()*100 + '%'; star.style.left = Math.random()*100 + '%';
             mainContainer.appendChild(star);
         }}
-
-        document.getElementById('imageInput').addEventListener('change', function() {{
-            const gallery = document.getElementById('gallery');
-            Array.from(this.files).forEach(file => {{
-                const reader = new FileReader();
-                reader.onload = e => {{
-                    const img = document.createElement('img'); img.src = e.target.result; img.className = 'img-card'; gallery.appendChild(img);
-                }};
-                reader.readAsDataURL(file);
-            }});
-        }});
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=950, scrolling=True)
+# Hiển thị giao diện Cyberpunk
+st.components.v1.html(html_code, height=900, scrolling=True)
+
+# --- BẢNG QUẢN LÝ DỮ LIỆU BẰNG STREAMLIT (LƯU VĨNH VIỄN) ---
+st.markdown("---")
+st.subheader("⚙️ Quản lý nội dung trang Web (Admin Panel)")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.write("📝 **Cập nhật Ghi chú:**")
+    new_note = st.text_area("Nhập nội dung ghi chú mới:", value=saved_note)
+    if st.button("Lưu Ghi Chú"):
+        with open(NOTE_FILE, "w", encoding="utf-8") as f:
+            f.write(new_note)
+        st.success("Đã lưu ghi chú vĩnh viễn!")
+        st.rerun()
+
+with col2:
+    st.write("🖼️ **Thêm hình ảnh vào Bộ sưu tập:**")
+    uploaded_files = st.file_uploader("Chọn ảnh cần tải lên:", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+    if st.button("Tải Ảnh Lên Web"):
+        if uploaded_files:
+            for u_file in uploaded_files:
+                save_path = os.path.join(IMAGE_DIR, u_file.name)
+                with open(save_path, "wb") as f:
+                    f.write(u_file.getbuffer())
+            st.success("Đã tải ảnh lên và lưu vĩnh viễn!")
+            st.rerun()
