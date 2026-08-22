@@ -23,29 +23,20 @@ def get_base64(file_path):
     return ""
 
 def extract_youtube_id(url):
-    """
-    Hàm bóc tách ID YouTube tối ưu hỗ trợ nhiều dạng URL khác nhau
-    """
     if not url:
         return "jfKfPfyJRdk"
-    
-    # Check các kiểu định dạng URL YouTube
     patterns = [
         r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
         r'youtu\.be\/([0-9A-Za-z_-]{11})',
         r'embed\/([0-9A-Za-z_-]{11})',
         r'shorts\/([0-9A-Za-z_-]{11})'
     ]
-    
     for pattern in patterns:
         match = re.search(pattern, url)
         if match:
             return match.group(1)
-            
-    # Nếu người dùng dán trực tiếp ID 11 ký tự
     if len(url.strip()) == 11 and re.match(r'^[0-9A-Za-z_-]{11}$', url.strip()):
         return url.strip()
-        
     return "jfKfPfyJRdk"
 
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
@@ -71,7 +62,7 @@ for img_name in image_list:
     img_p = os.path.join(IMAGE_DIR, img_name)
     b64 = get_base64(img_p)
     if b64:
-        saved_images_html += f'<img src="data:image/png;base64,{b64}" class="img-card">'
+        saved_images_html += f'<div class="img-card-wrapper"><img src="data:image/png;base64,{b64}" class="img-card"></div>'
 
 query_params = st.query_params
 is_admin = query_params.get("key") == SECRET_KEY
@@ -123,29 +114,68 @@ html_code = f"""
         }}
         @keyframes blink {{ 0%, 100% {{ opacity: 0.3; transform: scale(0.8); }} 50% {{ opacity: 1; transform: scale(1.2); }} }}
 
+        /* 🌟 HIỆU ỨNG VIỀN QUÉT SÁNG DẠNG NEON CHO CÁC KHUNG */
+        @keyframes neonGlowPulse {{
+            0% {{
+                border-color: #ff0000;
+                box-shadow: 0 0 15px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 0, 0, 0.4);
+            }}
+            50% {{
+                border-color: #ff5555;
+                box-shadow: 0 0 30px rgba(255, 30, 30, 0.9), inset 0 0 20px rgba(255, 30, 30, 0.6);
+            }}
+            100% {{
+                border-color: #ff0000;
+                box-shadow: 0 0 15px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 0, 0, 0.4);
+            }}
+        }}
+
+        /* Ảnh Welcome chính */
+        .welcome-img-wrapper {{
+            position: relative;
+            display: inline-block;
+            margin-bottom: 30px;
+            z-index: 2;
+        }}
+        
         .welcome-img {{
-            max-width: 100%; border: 2px solid #ff0000;
-            box-shadow: 0 0 35px #ff0000; margin-bottom: 30px; position: relative; z-index: 2;
+            max-width: 100%;
+            border: 2px solid #ff0000;
+            animation: neonGlowPulse 2.5s infinite ease-in-out;
+            display: block;
         }}
 
         .section {{ margin-top: 30px; text-align: center; position: relative; z-index: 2; }}
 
+        /* Ô Ghi chú sáng động */
         .note-box {{
             width: 100%; height: 120px; padding: 15px;
-            background: rgba(30, 0, 0, 0.85); border: 2px solid #ff0000;
-            color: #ff0000; font-family: 'Times New Roman', Times, serif;
+            background: rgba(25, 0, 0, 0.9);
+            border: 2px solid #ff0000;
+            color: #ff3333; font-family: 'Times New Roman', Times, serif;
             text-align: center; font-size: 19px; box-sizing: border-box;
-            box-shadow: inset 0 0 15px rgba(255,0,0,0.3);
             display: flex; align-items: center; justify-content: center;
+            animation: neonGlowPulse 3s infinite ease-in-out;
+            transition: transform 0.3s ease;
+        }}
+        .note-box:hover {{
+            transform: scale(1.01);
+            color: #ffffff;
+            text-shadow: 0 0 8px #ff0000;
         }}
 
+        /* Ô Trình phát YouTube sáng động */
         .yt-player-container {{
-            background: rgba(30, 0, 0, 0.9);
+            background: rgba(25, 0, 0, 0.92);
             border: 2px solid #ff0000;
-            padding: 15px;
+            padding: 18px;
             margin-top: 20px;
-            box-shadow: 0 0 25px rgba(255, 0, 0, 0.5);
+            animation: neonGlowPulse 2.8s infinite ease-in-out;
             position: relative; z-index: 3;
+            transition: transform 0.3s ease;
+        }}
+        .yt-player-container:hover {{
+            transform: translateY(-3px);
         }}
 
         .video-responsive {{
@@ -154,7 +184,8 @@ html_code = f"""
             position: relative;
             height: 0;
             background: #000;
-            border: 1px solid rgba(255,0,0,0.3);
+            border: 1px solid rgba(255,0,0,0.8);
+            box-shadow: 0 0 15px rgba(255,0,0,0.5);
         }}
 
         .video-responsive iframe, .video-responsive div#player {{
@@ -166,23 +197,49 @@ html_code = f"""
 
         .track-name {{
             font-family: 'Orbitron', sans-serif;
-            font-size: 14px;
+            font-size: 15px;
             margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            color: #ff0000;
-            text-shadow: 0 0 5px #ff0000;
+            color: #ff3333;
+            text-shadow: 0 0 8px #ff0000;
         }}
 
-        #gallery {{ display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px; }}
-        .img-card {{ width: 180px; height: 180px; object-fit: cover; border: 2px solid #ff0000; }}
+        /* Khung bộ sưu tập & Thẻ ảnh rực rỡ */
+        #gallery {{ display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-top: 20px; }}
+        
+        .img-card-wrapper {{
+            position: relative;
+            padding: 2px;
+            background: rgba(20, 0, 0, 0.8);
+        }}
+        
+        .img-card {{ 
+            width: 180px; 
+            height: 180px; 
+            object-fit: cover; 
+            border: 2px solid #ff0000; 
+            animation: neonGlowPulse 3.5s infinite ease-in-out;
+            transition: all 0.3s ease;
+            display: block;
+        }}
+
+        .img-card:hover {{
+            transform: scale(1.08);
+            border-color: #ffffff;
+            box-shadow: 0 0 25px #ff0000, 0 0 40px #ff0000;
+            z-index: 10;
+        }}
     </style>
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
     <div class="container" id="mainContainer">
         <canvas id="viz-canvas"></canvas>
-        <img src="data:image/jpeg;base64,{img_base64}" class="welcome-img">
+        
+        <div class="welcome-img-wrapper">
+            <img src="data:image/jpeg;base64,{img_base64}" class="welcome-img">
+        </div>
 
         <div class="section">
             <div class="note-box">{saved_note if saved_note else "CHƯA CÓ GHI CHÚ NÀO ĐƯỢC LƯU..."}</div>
@@ -190,7 +247,7 @@ html_code = f"""
 
         <div class="section">
             <div class="yt-player-container">
-                <div class="track-name">🎬 Cyberpunk Youtube Player</div>
+                <div class="track-name">⚡ Cyberpunk Youtube Player ⚡</div>
                 <div class="video-responsive">
                     <div id="player"></div>
                 </div>
