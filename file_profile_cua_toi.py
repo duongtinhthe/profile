@@ -23,9 +23,30 @@ def get_base64(file_path):
     return ""
 
 def extract_youtube_id(url):
-    pattern = r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
-    match = re.search(pattern, url)
-    return match.group(1) if match else "jfKfPfyJRdk"
+    """
+    Hàm bóc tách ID YouTube tối ưu hỗ trợ nhiều dạng URL khác nhau
+    """
+    if not url:
+        return "jfKfPfyJRdk"
+    
+    # Check các kiểu định dạng URL YouTube
+    patterns = [
+        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+        r'youtu\.be\/([0-9A-Za-z_-]{11})',
+        r'embed\/([0-9A-Za-z_-]{11})',
+        r'shorts\/([0-9A-Za-z_-]{11})'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+            
+    # Nếu người dùng dán trực tiếp ID 11 ký tự
+    if len(url.strip()) == 11 and re.match(r'^[0-9A-Za-z_-]{11}$', url.strip()):
+        return url.strip()
+        
+    return "jfKfPfyJRdk"
 
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
 img_base64 = get_base64(image_path)
@@ -132,12 +153,15 @@ html_code = f"""
             padding-bottom: 56.25%;
             position: relative;
             height: 0;
+            background: #000;
+            border: 1px solid rgba(255,0,0,0.3);
         }}
 
-        .video-responsive div#player {{
+        .video-responsive iframe, .video-responsive div#player {{
             left: 0; top: 0;
             height: 100%; width: 100%;
             position: absolute;
+            border: none;
         }}
 
         .track-name {{
@@ -180,8 +204,13 @@ html_code = f"""
         </div>
     </div>
 
-    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
+        // Load YouTube IFrame API
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         const vCanvas = document.getElementById('viz-canvas');
@@ -202,6 +231,12 @@ html_code = f"""
                 height: '100%',
                 width: '100%',
                 videoId: '{yt_id}',
+                playerVars: {{
+                    'autoplay': 0,
+                    'controls': 1,
+                    'rel': 0,
+                    'enablejsapi': 1
+                }},
                 events: {{
                     'onStateChange': onPlayerStateChange
                 }}
@@ -209,7 +244,6 @@ html_code = f"""
         }}
 
         function onPlayerStateChange(event) {{
-            // 1: PLAYING
             if (event.data === YT.PlayerState.PLAYING) {{
                 isPlaying = true;
             }} else {{
@@ -263,7 +297,7 @@ html_code = f"""
             if (isPlaying) {{
                 phase += 0.12;
             }} else {{
-                phase += 0.02; // Sóng nhẹ khi dừng
+                phase += 0.02;
             }}
 
             let topPts = [], botPts = [], leftPts = [], rightPts = [];
@@ -271,7 +305,6 @@ html_code = f"""
             for (let i = 0; i <= len; i++) {{
                 let amp = 0;
                 if (isPlaying) {{
-                    // Giả lập nhịp Bass & Tần số sóng nảy sống động
                     let bass = Math.sin(phase * 2.5) * 18;
                     let freq = Math.sin(phase + i * 0.4) * 20 + Math.cos(phase * 1.8 + i * 0.3) * 12;
                     amp = Math.abs(bass + freq);
@@ -285,19 +318,16 @@ html_code = f"""
                 rightPts.push({{ x: offset + w + amp, y: offset + (i / len) * h }});
             }}
 
-            // Vẽ dải sóng chính
             drawCurvedWave(topPts, '#ff0000', 3, 20);
             drawCurvedWave(botPts, '#ff0000', 3, 20);
             drawCurvedWave(leftPts, '#ff0000', 3, 20);
             drawCurvedWave(rightPts, '#ff0000', 3, 20);
 
-            // Layer sóng phụ mờ
             let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 6 }}));
             let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 6 }}));
             drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
             drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
 
-            // Bật tia sét khi nhạc chạy dồn dập
             if (isPlaying && Math.random() > 0.7) {{
                 let intensity = Math.random() * 0.8 + 0.2;
                 drawLightning(offset, offset, offset + w, offset, intensity);
@@ -334,11 +364,14 @@ html_code = f"""
         anim();
 
         for(let i=0; i<60; i++) {{
-            let star = document.createElement('div'); star.className = 'star';
-            let size = Math.random()*4 + 'px';
-            star.style.width = size; star.style.height = size;
-            star.style.top = Math.random()*100 + '%'; star.style.left = Math.random()*100 + '%';
-            document.getElementById('mainContainer').appendChild(star);
+            let star = document.getElementById('mainContainer');
+            if(star) {{
+                let s = document.createElement('div'); s.className = 'star';
+                let size = Math.random()*4 + 'px';
+                s.style.width = size; s.style.height = size;
+                s.style.top = Math.random()*100 + '%'; s.style.left = Math.random()*100 + '%';
+                star.appendChild(s);
+            }}
         }}
     </script>
 </body>
