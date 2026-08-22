@@ -8,8 +8,8 @@ st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wi
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 
-# 🔑 ĐẶT MẬT KHẨU CỦA BẠN TẠI ĐÂY (Thay '123456' thành mật khẩu bạn muốn)
-ADMIN_PASSWORD = "17022006"
+# 🔑 KHÓA BÍ MẬT TRÊN URL (Thay đổi nếu muốn)
+SECRET_KEY = "17022006"
 
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
@@ -37,6 +37,22 @@ for img_name in sorted(os.listdir(IMAGE_DIR)):
     b64 = get_base64(img_p)
     if b64:
         saved_images_html += f'<img src="data:image/png;base64,{b64}" class="img-card">'
+
+# Kiểm tra tham số trên URL (?key=17022006)
+query_params = st.query_params
+is_admin = query_params.get("key") == SECRET_KEY
+
+# Ẩn nút mũi tên Sidebar nếu người dùng truy cập link thường
+if not is_admin:
+    st.markdown(
+        """
+        <style>
+            [data-testid="collapsedControl"] { display: none !important; }
+            section[data-testid="stSidebar"] { display: none !important; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 html_code = f"""
 <!DOCTYPE html>
@@ -228,7 +244,7 @@ html_code = f"""
             if(avg > 140) {{
                 let intensity = (avg - 140) / 115;
                 if(Math.random() > 0.3) drawLightning(offset, offset, offset + w, offset, intensity);
-                if(Math.random() > 0.3) drawLightning(offset + w, offset, offset + w, offset + h, intensity);
+                if(Math.random() > 0.3) drawLightning(offset + w, offset + h, offset + w, offset + h, intensity);
                 if(Math.random() > 0.3) drawLightning(offset + w, offset + h, offset, offset + h, intensity);
                 if(Math.random() > 0.3) drawLightning(offset, offset + h, offset, offset, intensity);
             }}
@@ -273,15 +289,12 @@ html_code = f"""
 </html>
 """
 
-# Hiển thị giao diện Cyberpunk chính
 st.components.v1.html(html_code, height=950, scrolling=True)
 
-# --- KHU VỰC ADMIN DÀNH RIÊNG CHO BẠN (ẨN TRONG SIDEBAR MẤT MẬT KHẨU) ---
-st.sidebar.title("🔐 Đăng nhập Admin")
-input_pwd = st.sidebar.text_input("Nhập mật khẩu để quản lý:", type="password")
-
-if input_pwd == ADMIN_PASSWORD:
-    st.sidebar.success("Xác thực thành công!")
+# --- KHU VỰC ADMIN CHỈ HIỆN KHI CÓ URL BÍ MẬT ---
+if is_admin:
+    st.sidebar.title("👑 Chế độ Admin")
+    st.sidebar.success("Đã mở khóa quyền quản trị!")
     st.sidebar.markdown("---")
     st.sidebar.subheader("⚙️ Quản lý nội dung")
 
@@ -305,5 +318,3 @@ if input_pwd == ADMIN_PASSWORD:
                     f.write(u_file.getbuffer())
             st.sidebar.success("Đã đăng tải ảnh!")
             st.rerun()
-elif input_pwd != "":
-    st.sidebar.error("Mật khẩu không chính xác!")
