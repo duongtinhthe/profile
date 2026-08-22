@@ -82,29 +82,43 @@ html_code = f"""
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
+        * {{
+            box-sizing: border-box;
+        }}
         body {{
             font-family: 'Rajdhani', sans-serif;
             background-color: #050000;
-            margin: 0; padding: 20px 10px;
-            color: #ff0000; overflow-x: hidden;
+            margin: 0; 
+            padding: 10px 5px;
+            color: #ff0000; 
+            overflow-x: hidden;
         }}
-        #bg-canvas {{ position: fixed; top: 0; left: 0; z-index: -1; }}
+        #bg-canvas {{ position: fixed; top: 0; left: 0; z-index: -1; width: 100%; height: 100%; }}
 
         .container {{
-            max-width: 900px; margin: auto;
+            width: 100%;
+            max-width: 900px; 
+            margin: auto;
             background: rgba(10, 0, 0, 0.96);
-            padding: 40px; border: 2px solid #ff0000;
+            padding: 30px 20px; 
+            border: 2px solid #ff0000;
             box-shadow: 0 0 35px rgba(255, 0, 0, 0.6);
-            text-align: center; position: relative;
+            text-align: center; 
+            position: relative;
             overflow: visible;
         }}
 
         #viz-canvas {{
-            position: absolute; top: -40px; left: -40px;
-            width: calc(100% + 80px); height: calc(100% + 80px);
-            pointer-events: none; z-index: 5;
+            position: absolute; 
+            top: -20px; 
+            left: -20px;
+            width: calc(100% + 40px); 
+            height: calc(100% + 40px);
+            pointer-events: none; 
+            z-index: 5;
         }}
 
         .star {{
@@ -130,33 +144,43 @@ html_code = f"""
             }}
         }}
 
-        /* Ảnh Welcome chính */
         .welcome-img-wrapper {{
             position: relative;
             display: inline-block;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
+            width: 100%;
             z-index: 2;
         }}
         
         .welcome-img {{
             max-width: 100%;
+            height: auto;
             border: 2px solid #ff0000;
             animation: neonGlowPulse 2.5s infinite ease-in-out;
             display: block;
+            margin: 0 auto;
         }}
 
-        .section {{ margin-top: 30px; text-align: center; position: relative; z-index: 2; }}
+        .section {{ margin-top: 25px; text-align: center; position: relative; z-index: 2; width: 100%; }}
 
         /* Ô Ghi chú sáng động */
         .note-box {{
-            width: 100%; height: 120px; padding: 15px;
+            width: 100%; 
+            min-height: 100px; 
+            padding: 15px;
             background: rgba(25, 0, 0, 0.9);
             border: 2px solid #ff0000;
-            color: #ff3333; font-family: 'Times New Roman', Times, serif;
-            text-align: center; font-size: 19px; box-sizing: border-box;
-            display: flex; align-items: center; justify-content: center;
+            color: #ff3333; 
+            font-family: 'Times New Roman', Times, serif;
+            text-align: center; 
+            font-size: 18px; 
+            box-sizing: border-box;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
             animation: neonGlowPulse 3s infinite ease-in-out;
             transition: transform 0.3s ease;
+            word-break: break-word;
         }}
         .note-box:hover {{
             transform: scale(1.01);
@@ -168,14 +192,13 @@ html_code = f"""
         .yt-player-container {{
             background: rgba(25, 0, 0, 0.92);
             border: 2px solid #ff0000;
-            padding: 18px;
-            margin-top: 20px;
+            padding: 12px;
+            margin-top: 15px;
             animation: neonGlowPulse 2.8s infinite ease-in-out;
-            position: relative; z-index: 3;
+            position: relative; 
+            z-index: 3;
             transition: transform 0.3s ease;
-        }}
-        .yt-player-container:hover {{
-            transform: translateY(-3px);
+            width: 100%;
         }}
 
         .video-responsive {{
@@ -186,6 +209,7 @@ html_code = f"""
             background: #000;
             border: 1px solid rgba(255,0,0,0.8);
             box-shadow: 0 0 15px rgba(255,0,0,0.5);
+            width: 100%;
         }}
 
         .video-responsive iframe, .video-responsive div#player {{
@@ -197,16 +221,23 @@ html_code = f"""
 
         .track-name {{
             font-family: 'Orbitron', sans-serif;
-            font-size: 15px;
-            margin-bottom: 12px;
+            font-size: 14px;
+            margin-bottom: 10px;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1.5px;
             color: #ff3333;
             text-shadow: 0 0 8px #ff0000;
         }}
 
         /* Khung bộ sưu tập & Thẻ ảnh rực rỡ */
-        #gallery {{ display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-top: 20px; }}
+        #gallery {{ 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 12px; 
+            justify-content: center; 
+            margin-top: 15px; 
+            width: 100%;
+        }}
         
         .img-card-wrapper {{
             position: relative;
@@ -215,8 +246,8 @@ html_code = f"""
         }}
         
         .img-card {{ 
-            width: 180px; 
-            height: 180px; 
+            width: 160px; 
+            height: 160px; 
             object-fit: cover; 
             border: 2px solid #ff0000; 
             animation: neonGlowPulse 3.5s infinite ease-in-out;
@@ -225,10 +256,48 @@ html_code = f"""
         }}
 
         .img-card:hover {{
-            transform: scale(1.08);
+            transform: scale(1.05);
             border-color: #ffffff;
-            box-shadow: 0 0 25px #ff0000, 0 0 40px #ff0000;
+            box-shadow: 0 0 25px #ff0000;
             z-index: 10;
+        }}
+
+        /* 📱 TỐI ƯU RIÊNG CHO ĐIỆN THOẠI (MEDIA QUERIES) */
+        @media (max-width: 768px) {{
+            body {{
+                padding: 5px 0;
+            }}
+            .container {{
+                padding: 15px 10px;
+                border-width: 1.5px;
+            }}
+            #viz-canvas {{
+                top: -10px;
+                left: -10px;
+                width: calc(100% + 20px);
+                height: calc(100% + 20px);
+            }}
+            .note-box {{
+                font-size: 15px;
+                padding: 10px;
+                min-height: 80px;
+            }}
+            .yt-player-container {{
+                padding: 8px;
+            }}
+            .track-name {{
+                font-size: 12px;
+                letter-spacing: 1px;
+            }}
+            #gallery {{
+                gap: 8px;
+            }}
+            .img-card {{
+                width: calc(50vw - 25px);
+                max-width: 160px;
+                height: calc(50vw - 25px);
+                max-height: 160px;
+            }}
         }}
     </style>
 </head>
@@ -277,10 +346,13 @@ html_code = f"""
         let isPlaying = false;
 
         function initCanvas() {{
-            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            vCanvas.width = vCanvas.offsetWidth; vCanvas.height = vCanvas.offsetHeight;
+            canvas.width = window.innerWidth; 
+            canvas.height = window.innerHeight;
+            vCanvas.width = vCanvas.offsetWidth; 
+            vCanvas.height = vCanvas.offsetHeight;
         }}
-        window.addEventListener('resize', initCanvas); initCanvas();
+        window.addEventListener('resize', initCanvas); 
+        initCanvas();
 
         let player;
         function onYouTubeIframeAPIReady() {{
@@ -311,19 +383,20 @@ html_code = f"""
         function drawLightning(x1, y1, x2, y2, intensity) {{
             vCtx.strokeStyle = `rgba(255, 30, 30, ${{intensity}})`;
             vCtx.lineWidth = 2 + Math.random() * 2;
-            vCtx.shadowBlur = 20; vCtx.shadowColor = '#ff0000';
+            vCtx.shadowBlur = 15; vCtx.shadowColor = '#ff0000';
             vCtx.beginPath();
             vCtx.moveTo(x1, y1);
             let steps = 6;
             for(let i=1; i<=steps; i++) {{
-                let tx = x1 + (x2-x1)*(i/steps) + (Math.random()-0.5)*25*intensity;
-                let ty = y1 + (y2-y1)*(i/steps) + (Math.random()-0.5)*25*intensity;
+                let tx = x1 + (x2-x1)*(i/steps) + (Math.random()-0.5)*15*intensity;
+                let ty = y1 + (y2-y1)*(i/steps) + (Math.random()-0.5)*15*intensity;
                 vCtx.lineTo(tx, ty);
             }}
             vCtx.stroke();
         }}
 
         function drawCurvedWave(points, color, width, glow) {{
+            if (!points || points.length === 0) return;
             vCtx.save();
             vCtx.strokeStyle = color;
             vCtx.lineWidth = width;
@@ -346,10 +419,13 @@ html_code = f"""
             requestAnimationFrame(visualize);
             vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
 
-            const offset = 40;
+            const isMobile = window.innerWidth <= 768;
+            const offset = isMobile ? 10 : 20;
             const w = vCanvas.width - offset * 2;
             const h = vCanvas.height - offset * 2;
-            const len = 32;
+            const len = isMobile ? 20 : 32;
+
+            if (w <= 0 || h <= 0) return;
 
             if (isPlaying) {{
                 phase += 0.12;
@@ -362,11 +438,11 @@ html_code = f"""
             for (let i = 0; i <= len; i++) {{
                 let amp = 0;
                 if (isPlaying) {{
-                    let bass = Math.sin(phase * 2.5) * 18;
-                    let freq = Math.sin(phase + i * 0.4) * 20 + Math.cos(phase * 1.8 + i * 0.3) * 12;
+                    let bass = Math.sin(phase * 2.5) * (isMobile ? 10 : 18);
+                    let freq = Math.sin(phase + i * 0.4) * (isMobile ? 12 : 20) + Math.cos(phase * 1.8 + i * 0.3) * 8;
                     amp = Math.abs(bass + freq);
                 }} else {{
-                    amp = Math.sin(phase + i * 0.2) * 4;
+                    amp = Math.sin(phase + i * 0.2) * (isMobile ? 2 : 4);
                 }}
 
                 topPts.push({{ x: offset + (i / len) * w, y: offset - amp }});
@@ -375,15 +451,15 @@ html_code = f"""
                 rightPts.push({{ x: offset + w + amp, y: offset + (i / len) * h }});
             }}
 
-            drawCurvedWave(topPts, '#ff0000', 3, 20);
-            drawCurvedWave(botPts, '#ff0000', 3, 20);
-            drawCurvedWave(leftPts, '#ff0000', 3, 20);
-            drawCurvedWave(rightPts, '#ff0000', 3, 20);
+            drawCurvedWave(topPts, '#ff0000', isMobile ? 2 : 3, 15);
+            drawCurvedWave(botPts, '#ff0000', isMobile ? 2 : 3, 15);
+            drawCurvedWave(leftPts, '#ff0000', isMobile ? 2 : 3, 15);
+            drawCurvedWave(rightPts, '#ff0000', isMobile ? 2 : 3, 15);
 
-            let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 6 }}));
-            let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 6 }}));
-            drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
-            drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
+            let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 4 }}));
+            let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 4 }}));
+            drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1, 8);
+            drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1, 8);
 
             if (isPlaying && Math.random() > 0.7) {{
                 let intensity = Math.random() * 0.8 + 0.2;
@@ -398,33 +474,36 @@ html_code = f"""
             reset() {{
                 this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height;
                 this.vx = (Math.random()-0.5)*1.2; this.vy = (Math.random()-0.5)*1.2;
-                this.s = Math.random()*3 + 1; this.opacity = Math.random() * 0.5 + 0.3;
+                this.s = Math.random()*2 + 1; this.opacity = Math.random() * 0.5 + 0.3;
             }}
             u() {{
                 this.x += this.vx; this.y += this.vy;
                 if(this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.reset();
             }}
             d() {{
-                ctx.shadowBlur = 10; ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 8; ctx.shadowColor = '#ff0000';
                 ctx.fillStyle = `rgba(255, 0, 0, ${{this.opacity}})`;
                 ctx.beginPath(); ctx.arc(this.x,this.y,this.s,0,Math.PI*2); ctx.fill();
                 ctx.shadowBlur = 0;
             }}
         }}
 
-        for(let i=0;i<300;i++) particles.push(new P());
+        const particleCount = window.innerWidth <= 768 ? 120 : 250;
+        for(let i=0; i<particleCount; i++) particles.push(new P());
+        
         function anim() {{
-            ctx.fillStyle = 'rgba(5, 0, 0, 0.15)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = 'rgba(5, 0, 0, 0.15)'; 
+            ctx.fillRect(0,0,canvas.width,canvas.height);
             particles.forEach(p=>{{p.u();p.d();}});
             requestAnimationFrame(anim);
         }}
         anim();
 
-        for(let i=0; i<60; i++) {{
+        for(let i=0; i<40; i++) {{
             let star = document.getElementById('mainContainer');
             if(star) {{
                 let s = document.createElement('div'); s.className = 'star';
-                let size = Math.random()*4 + 'px';
+                let size = Math.random()*3 + 'px';
                 s.style.width = size; s.style.height = size;
                 s.style.top = Math.random()*100 + '%'; s.style.left = Math.random()*100 + '%';
                 star.appendChild(s);
