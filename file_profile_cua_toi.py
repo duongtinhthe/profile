@@ -7,6 +7,7 @@ st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wi
 
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
+AUDIO_FILE = "current_bgm.mp3"
 
 # 🔑 KHÓA BÍ MẬT TRÊN URL
 SECRET_KEY = "17022006"
@@ -21,10 +22,15 @@ def get_base64(file_path):
     return ""
 
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
-audio_path = 'Sơn Tùng M-TP x Tyga - Come My Way (Acigode Remix).mp3'
+
+# Ưu tiên lấy file MP3 mới tải lên, nếu chưa có thì dùng file mặc định
+if os.path.exists(AUDIO_FILE):
+    current_audio_path = AUDIO_FILE
+else:
+    current_audio_path = 'Sơn Tùng M-TP x Tyga - Come My Way (Acigode Remix).mp3'
 
 img_base64 = get_base64(image_path)
-audio_base64 = get_base64(audio_path)
+audio_base64 = get_base64(current_audio_path)
 
 saved_note = ""
 if os.path.exists(NOTE_FILE):
@@ -32,7 +38,8 @@ if os.path.exists(NOTE_FILE):
         saved_note = f.read()
 
 saved_images_html = ""
-for img_name in sorted(os.listdir(IMAGE_DIR)):
+image_list = sorted(os.listdir(IMAGE_DIR))
+for img_name in image_list:
     img_p = os.path.join(IMAGE_DIR, img_name)
     b64 = get_base64(img_p)
     if b64:
@@ -141,7 +148,7 @@ html_code = f"""
 
         <div class="section">
             <div class="audio-player-container">
-                <div class="track-name">Now Playing: Come My Way (Remix)</div>
+                <div class="track-name">Now Playing: Background Audio</div>
                 <audio id="audioPlayer" controls crossorigin="anonymous">
                     <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
                 </audio>
@@ -200,7 +207,6 @@ html_code = f"""
             vCtx.stroke();
         }}
 
-        // Hàm vẽ đường sóng mềm mại dựa trên Bezier Curves
         function drawCurvedWave(points, color, width, glow) {{
             vCtx.save();
             vCtx.strokeStyle = color;
@@ -238,7 +244,7 @@ html_code = f"""
             const offset = 40;
             const w = vCanvas.width - offset * 2;
             const h = vCanvas.height - offset * 2;
-            const len = 32; // Số điểm sóng
+            const len = 32;
 
             let topPts = [], botPts = [], leftPts = [], rightPts = [];
 
@@ -246,29 +252,22 @@ html_code = f"""
                 let freq = dataArray[i % dataArray.length] / 255.0;
                 let amp = freq * 45 + Math.sin(phase + i * 0.3) * 8; 
 
-                // Viền Trên (Top Wave)
                 topPts.push({{ x: offset + (i / len) * w, y: offset - amp }});
-                // Viền Dưới (Bottom Wave)
                 botPts.push({{ x: offset + (i / len) * w, y: offset + h + amp }});
-                // Viền Trái (Left Wave)
                 leftPts.push({{ x: offset - amp, y: offset + (i / len) * h }});
-                // Viền Phải (Right Wave)
                 rightPts.push({{ x: offset + w + amp, y: offset + (i / len) * h }});
             }}
 
-            // Vẽ dải sóng chính sáng ngời
             drawCurvedWave(topPts, '#ff0000', 3, 20);
             drawCurvedWave(botPts, '#ff0000', 3, 20);
             drawCurvedWave(leftPts, '#ff0000', 3, 20);
             drawCurvedWave(rightPts, '#ff0000', 3, 20);
 
-            // Vẽ lớp sóng mờ phụ phía sau tạo hiệu ứng chiều sâu (Cyber Motion Blur)
             let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 6 }}));
             let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 6 }}));
             drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
             drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
 
-            // Bật tia sét khi gặp nhịp Bass dồn
             if(avg > 135) {{
                 let intensity = (avg - 135) / 120;
                 if(Math.random() > 0.25) drawLightning(offset, offset, offset + w, offset, intensity);
@@ -319,13 +318,26 @@ html_code = f"""
 
 st.components.v1.html(html_code, height=950, scrolling=True)
 
-# --- KHU VỰC ADMIN CHỈ HIỆN KHI CÓ URL BÍ MẬT ---
+# --- KHU VỰC ADMIN TRÊN SIDEBAR ---
 if is_admin:
     st.sidebar.title("👑 Chế độ Admin")
     st.sidebar.success("Đã mở khóa quyền quản trị!")
     st.sidebar.markdown("---")
-    st.sidebar.subheader("⚙️ Quản lý nội dung")
 
+    # 1. Quản lý Nhạc MP3
+    st.sidebar.subheader("🎵 Thay thế nhạc MP3")
+    uploaded_audio = st.sidebar.file_uploader("Tải lên bài hát MP3 mới:", type=['mp3'])
+    if st.sidebar.button("Cập nhật nhạc mới"):
+        if uploaded_audio:
+            with open(AUDIO_FILE, "wb") as f:
+                f.write(uploaded_audio.getbuffer())
+            st.sidebar.success("Đã thay nhạc mới!")
+            st.rerun()
+
+    st.sidebar.markdown("---")
+
+    # 2. Quản lý Ghi chú
+    st.sidebar.subheader("📝 Quản lý ghi chú")
     new_note = st.sidebar.text_area("Cập nhật ghi chú mới:", value=saved_note)
     if st.sidebar.button("Lưu Ghi Chú"):
         with open(NOTE_FILE, "w", encoding="utf-8") as f:
@@ -335,7 +347,9 @@ if is_admin:
 
     st.sidebar.markdown("---")
 
-    uploaded_files = st.sidebar.file_uploader("Thêm ảnh vào bộ sưu tập:", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+    # 3. Quản lý Bộ sưu tập & Xoá Ảnh
+    st.sidebar.subheader("🖼️ Quản lý hình ảnh")
+    uploaded_files = st.sidebar.file_uploader("Thêm ảnh mới:", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
     if st.sidebar.button("Tải Ảnh Lên"):
         if uploaded_files:
             for u_file in uploaded_files:
@@ -344,3 +358,13 @@ if is_admin:
                     f.write(u_file.getbuffer())
             st.sidebar.success("Đã đăng tải ảnh!")
             st.rerun()
+
+    if image_list:
+        st.sidebar.markdown("**Danh sách ảnh hiện tại (Xoá):**")
+        for img_name in image_list:
+            col_img, col_btn = st.sidebar.columns([3, 1])
+            col_img.caption(img_name)
+            if col_btn.button("❌", key=f"del_{img_name}"):
+                os.remove(os.path.join(IMAGE_DIR, img_name))
+                st.sidebar.success(f"Đã xoá {img_name}")
+                st.rerun()
