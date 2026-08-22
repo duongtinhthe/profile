@@ -2,18 +2,15 @@
 import streamlit as st
 import base64
 import os
-import json
 
 st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wide")
 
-# File lưu ghi chú cố định
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-# Hàm mã hóa file sang Base64
 def get_base64(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
@@ -26,13 +23,11 @@ audio_path = 'Sơn Tùng M-TP x Tyga - Come My Way (Acigode Remix).mp3'
 img_base64 = get_base64(image_path)
 audio_base64 = get_base64(audio_path)
 
-# Đọc ghi chú đã lưu từ trước
 saved_note = ""
 if os.path.exists(NOTE_FILE):
     with open(NOTE_FILE, "r", encoding="utf-8") as f:
         saved_note = f.read()
 
-# Đọc danh sách ảnh đã tải lên từ trước
 saved_images_html = ""
 for img_name in sorted(os.listdir(IMAGE_DIR)):
     img_p = os.path.join(IMAGE_DIR, img_name)
@@ -63,9 +58,9 @@ html_code = f"""
             overflow: visible;
         }}
 
-        #lightning-canvas {{
-            position: absolute; top: -20px; left: -20px;
-            width: calc(100% + 40px); height: calc(100% + 40px);
+        #viz-canvas {{
+            position: absolute; top: -30px; left: -30px;
+            width: calc(100% + 60px); height: calc(100% + 60px);
             pointer-events: none; z-index: 5;
         }}
 
@@ -120,7 +115,7 @@ html_code = f"""
 <body>
     <canvas id="bg-canvas"></canvas>
     <div class="container" id="mainContainer">
-        <canvas id="lightning-canvas"></canvas>
+        <canvas id="viz-canvas"></canvas>
         <img src="data:image/jpeg;base64,{img_base64}" class="welcome-img">
 
         <div class="section">
@@ -146,13 +141,13 @@ html_code = f"""
     <script>
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
-        const lCanvas = document.getElementById('lightning-canvas');
-        const lCtx = lCanvas.getContext('2d');
+        const vCanvas = document.getElementById('viz-canvas');
+        const vCtx = vCanvas.getContext('2d');
         let particles = [];
 
         function initCanvas() {{
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            lCanvas.width = lCanvas.offsetWidth; lCanvas.height = lCanvas.offsetHeight;
+            vCanvas.width = vCanvas.offsetWidth; vCanvas.height = vCanvas.offsetHeight;
         }}
         window.addEventListener('resize', initCanvas); initCanvas();
 
@@ -166,24 +161,25 @@ html_code = f"""
                 const source = audioCtx.createMediaElementSource(audio);
                 analyser = audioCtx.createAnalyser();
                 source.connect(analyser); analyser.connect(audioCtx.destination);
-                analyser.fftSize = 256; dataArray = new Uint8Array(analyser.frequencyBinCount);
+                analyser.fftSize = 128; 
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
                 visualize();
             }}
         }};
 
         function drawLightning(x1, y1, x2, y2, intensity) {{
-            lCtx.strokeStyle = `rgba(255, 50, 100, ${{intensity}})`;
-            lCtx.lineWidth = 1 + Math.random() * 2;
-            lCtx.shadowBlur = 15; lCtx.shadowColor = '#ff2266';
-            lCtx.beginPath();
-            lCtx.moveTo(x1, y1);
-            let steps = 5;
+            vCtx.strokeStyle = `rgba(255, 0, 50, ${{intensity}})`;
+            vCtx.lineWidth = 2 + Math.random() * 2;
+            vCtx.shadowBlur = 20; vCtx.shadowColor = '#ff0033';
+            vCtx.beginPath();
+            vCtx.moveTo(x1, y1);
+            let steps = 6;
             for(let i=1; i<=steps; i++) {{
-                let tx = x1 + (x2-x1)*(i/steps) + (Math.random()-0.5)*20*intensity;
-                let ty = y1 + (y2-y1)*(i/steps) + (Math.random()-0.5)*20*intensity;
-                lCtx.lineTo(tx, ty);
+                let tx = x1 + (x2-x1)*(i/steps) + (Math.random()-0.5)*25*intensity;
+                let ty = y1 + (y2-y1)*(i/steps) + (Math.random()-0.5)*25*intensity;
+                vCtx.lineTo(tx, ty);
             }}
-            lCtx.stroke();
+            vCtx.stroke();
         }}
 
         function visualize() {{
@@ -191,20 +187,54 @@ html_code = f"""
             requestAnimationFrame(visualize);
             analyser.getByteFrequencyData(dataArray);
 
-            let sum = 0; for(let i = 0; i < 10; i++) sum += dataArray[i];
-            let avg = sum / 10;
+            let sum = 0; 
+            for(let i = 0; i < 15; i++) sum += dataArray[i];
+            let avg = sum / 15;
 
-            let glow = 35 + (avg / 3);
-            mainContainer.style.boxShadow = `0 0 ${{glow}}px rgba(255, 0, 0, ${{0.4 + avg/255}})`;
-            mainContainer.style.borderWidth = `${{2 + avg/40}}px`;
+            // Đổi hiệu ứng phát sáng khung theo nhịp Bass
+            let glow = 30 + (avg / 2);
+            mainContainer.style.boxShadow = `0 0 ${{glow}}px rgba(255, 0, 0, ${{0.5 + avg/200}})`;
 
-            lCtx.clearRect(0,0,lCanvas.width,lCanvas.height);
-            if(avg > 150) {{
-                let intensity = (avg - 150) / 105;
-                if(Math.random() > 0.5) drawLightning(0, 0, lCanvas.width, 0, intensity);
-                if(Math.random() > 0.5) drawLightning(lCanvas.width, 0, lCanvas.width, lCanvas.height, intensity);
-                if(Math.random() > 0.5) drawLightning(lCanvas.width, lCanvas.height, 0, lCanvas.height, intensity);
-                if(Math.random() > 0.5) drawLightning(0, lCanvas.height, 0, 0, intensity);
+            vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+
+            const offset = 30; // Khoảng cách tới mép viền
+            const w = vCanvas.width - offset * 2;
+            const h = vCanvas.height - offset * 2;
+            const numBars = dataArray.length;
+
+            vCtx.fillStyle = '#ff0000';
+            vCtx.shadowBlur = 15;
+            vCtx.shadowColor = '#ff0000';
+
+            // Vẽ Equalizer Bars nhảy múa 4 CẠNH VIỀN
+            for (let i = 0; i < numBars; i++) {{
+                let val = dataArray[i] / 255.0; // Giá trị từ 0.0 - 1.0
+                let barLen = val * 55; // Chiều cao sóng tối đa 55px
+
+                // 1. Viền Trên
+                let xTop = offset + (i / numBars) * w;
+                vCtx.fillRect(xTop, offset - barLen, w / numBars - 2, barLen);
+
+                // 2. Viền Dưới
+                let xBot = offset + (i / numBars) * w;
+                vCtx.fillRect(xBot, offset + h, w / numBars - 2, barLen);
+
+                // 3. Viền Trái
+                let yLeft = offset + (i / numBars) * h;
+                vCtx.fillRect(offset - barLen, yLeft, barLen, h / numBars - 2);
+
+                // 4. Viền Phải
+                let yRight = offset + (i / numBars) * h;
+                vCtx.fillRect(offset + w, yRight, barLen, h / numBars - 2);
+            }}
+
+            // Phát tia sét xung quanh viền khi nhạc chạm Bass mạnh
+            if(avg > 140) {{
+                let intensity = (avg - 140) / 115;
+                if(Math.random() > 0.3) drawLightning(offset, offset, offset + w, offset, intensity);
+                if(Math.random() > 0.3) drawLightning(offset + w, offset, offset + w, offset + h, intensity);
+                if(Math.random() > 0.3) drawLightning(offset + w, offset + h, offset, offset + h, intensity);
+                if(Math.random() > 0.3) drawLightning(offset, offset + h, offset, offset, intensity);
             }}
         }}
 
@@ -247,10 +277,8 @@ html_code = f"""
 </html>
 """
 
-# Hiển thị giao diện Cyberpunk
-st.components.v1.html(html_code, height=900, scrolling=True)
+st.components.v1.html(html_code, height=950, scrolling=True)
 
-# --- BẢNG QUẢN LÝ DỮ LIỆU BẰNG STREAMLIT (LƯU VĨNH VIỄN) ---
 st.markdown("---")
 st.subheader("⚙️ Quản lý nội dung trang Web (Admin Panel)")
 
