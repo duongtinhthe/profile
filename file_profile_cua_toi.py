@@ -25,12 +25,11 @@ def get_base64(file_path):
 def extract_youtube_id(url):
     pattern = r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
     match = re.search(pattern, url)
-    return match.group(1) if match else "jfKfPfyJRdk" # Video mặc định nếu link lỗi
+    return match.group(1) if match else "jfKfPfyJRdk"
 
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
 img_base64 = get_base64(image_path)
 
-# Đọc link YouTube đã lưu
 saved_yt_url = "https://www.youtube.com/watch?v=jfKfPfyJRdk"
 if os.path.exists(YOUTUBE_FILE):
     with open(YOUTUBE_FILE, "r", encoding="utf-8") as f:
@@ -40,13 +39,11 @@ if os.path.exists(YOUTUBE_FILE):
 
 yt_id = extract_youtube_id(saved_yt_url)
 
-# Đọc ghi chú
 saved_note = ""
 if os.path.exists(NOTE_FILE):
     with open(NOTE_FILE, "r", encoding="utf-8") as f:
         saved_note = f.read()
 
-# Đọc bộ sưu tập ảnh
 saved_images_html = ""
 image_list = sorted(os.listdir(IMAGE_DIR))
 for img_name in image_list:
@@ -55,7 +52,6 @@ for img_name in image_list:
     if b64:
         saved_images_html += f'<img src="data:image/png;base64,{b64}" class="img-card">'
 
-# Kiểm tra quyền Admin từ URL (?key=17022006)
 query_params = st.query_params
 is_admin = query_params.get("key") == SECRET_KEY
 
@@ -138,11 +134,10 @@ html_code = f"""
             height: 0;
         }}
 
-        .video-responsive iframe {{
+        .video-responsive div#player {{
             left: 0; top: 0;
             height: 100%; width: 100%;
             position: absolute;
-            border: none;
         }}
 
         .track-name {{
@@ -173,11 +168,7 @@ html_code = f"""
             <div class="yt-player-container">
                 <div class="track-name">🎬 Cyberpunk Youtube Player</div>
                 <div class="video-responsive">
-                    <iframe 
-                        src="https://www.youtube.com/embed/{yt_id}?enablejsapi=1&autoplay=0&rel=0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                    </iframe>
+                    <div id="player"></div>
                 </div>
             </div>
         </div>
@@ -189,6 +180,7 @@ html_code = f"""
         </div>
     </div>
 
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
@@ -196,12 +188,49 @@ html_code = f"""
         const vCtx = vCanvas.getContext('2d');
         let particles = [];
         let phase = 0;
+        let isPlaying = false;
 
         function initCanvas() {{
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
             vCanvas.width = vCanvas.offsetWidth; vCanvas.height = vCanvas.offsetHeight;
         }}
         window.addEventListener('resize', initCanvas); initCanvas();
+
+        let player;
+        function onYouTubeIframeAPIReady() {{
+            player = new YT.Player('player', {{
+                height: '100%',
+                width: '100%',
+                videoId: '{yt_id}',
+                events: {{
+                    'onStateChange': onPlayerStateChange
+                }}
+            }});
+        }}
+
+        function onPlayerStateChange(event) {{
+            // 1: PLAYING
+            if (event.data === YT.PlayerState.PLAYING) {{
+                isPlaying = true;
+            }} else {{
+                isPlaying = false;
+            }}
+        }}
+
+        function drawLightning(x1, y1, x2, y2, intensity) {{
+            vCtx.strokeStyle = `rgba(255, 30, 30, ${{intensity}})`;
+            vCtx.lineWidth = 2 + Math.random() * 2;
+            vCtx.shadowBlur = 20; vCtx.shadowColor = '#ff0000';
+            vCtx.beginPath();
+            vCtx.moveTo(x1, y1);
+            let steps = 6;
+            for(let i=1; i<=steps; i++) {{
+                let tx = x1 + (x2-x1)*(i/steps) + (Math.random()-0.5)*25*intensity;
+                let ty = y1 + (y2-y1)*(i/steps) + (Math.random()-0.5)*25*intensity;
+                vCtx.lineTo(tx, ty);
+            }}
+            vCtx.stroke();
+        }}
 
         function drawCurvedWave(points, color, width, glow) {{
             vCtx.save();
@@ -224,8 +253,6 @@ html_code = f"""
 
         function visualize() {{
             requestAnimationFrame(visualize);
-            phase += 0.05;
-
             vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
 
             const offset = 40;
@@ -233,10 +260,24 @@ html_code = f"""
             const h = vCanvas.height - offset * 2;
             const len = 32;
 
+            if (isPlaying) {{
+                phase += 0.12;
+            }} else {{
+                phase += 0.02; // Sóng nhẹ khi dừng
+            }}
+
             let topPts = [], botPts = [], leftPts = [], rightPts = [];
 
             for (let i = 0; i <= len; i++) {{
-                let amp = Math.sin(phase + i * 0.35) * 12 + Math.cos(phase * 1.5 + i * 0.2) * 8;
+                let amp = 0;
+                if (isPlaying) {{
+                    // Giả lập nhịp Bass & Tần số sóng nảy sống động
+                    let bass = Math.sin(phase * 2.5) * 18;
+                    let freq = Math.sin(phase + i * 0.4) * 20 + Math.cos(phase * 1.8 + i * 0.3) * 12;
+                    amp = Math.abs(bass + freq);
+                }} else {{
+                    amp = Math.sin(phase + i * 0.2) * 4;
+                }}
 
                 topPts.push({{ x: offset + (i / len) * w, y: offset - amp }});
                 botPts.push({{ x: offset + (i / len) * w, y: offset + h + amp }});
@@ -244,15 +285,24 @@ html_code = f"""
                 rightPts.push({{ x: offset + w + amp, y: offset + (i / len) * h }});
             }}
 
+            // Vẽ dải sóng chính
             drawCurvedWave(topPts, '#ff0000', 3, 20);
             drawCurvedWave(botPts, '#ff0000', 3, 20);
             drawCurvedWave(leftPts, '#ff0000', 3, 20);
             drawCurvedWave(rightPts, '#ff0000', 3, 20);
 
-            let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 5 }}));
-            let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 5 }}));
+            // Layer sóng phụ mờ
+            let topPtsSub = topPts.map(p => ({{ x: p.x, y: p.y - 6 }}));
+            let botPtsSub = botPts.map(p => ({{ x: p.x, y: p.y + 6 }}));
             drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
             drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1.5, 10);
+
+            // Bật tia sét khi nhạc chạy dồn dập
+            if (isPlaying && Math.random() > 0.7) {{
+                let intensity = Math.random() * 0.8 + 0.2;
+                drawLightning(offset, offset, offset + w, offset, intensity);
+                drawLightning(offset + w, offset, offset + w, offset + h, intensity);
+            }}
         }}
         visualize();
 
