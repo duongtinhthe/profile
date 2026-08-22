@@ -8,6 +8,9 @@ st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wi
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 
+# 🔑 ĐẶT MẬT KHẨU CỦA BẠN TẠI ĐÂY (Thay '123456' thành mật khẩu bạn muốn)
+ADMIN_PASSWORD = "123"
+
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
@@ -191,13 +194,12 @@ html_code = f"""
             for(let i = 0; i < 15; i++) sum += dataArray[i];
             let avg = sum / 15;
 
-            // Đổi hiệu ứng phát sáng khung theo nhịp Bass
             let glow = 30 + (avg / 2);
             mainContainer.style.boxShadow = `0 0 ${{glow}}px rgba(255, 0, 0, ${{0.5 + avg/200}})`;
 
             vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
 
-            const offset = 30; // Khoảng cách tới mép viền
+            const offset = 30;
             const w = vCanvas.width - offset * 2;
             const h = vCanvas.height - offset * 2;
             const numBars = dataArray.length;
@@ -206,29 +208,23 @@ html_code = f"""
             vCtx.shadowBlur = 15;
             vCtx.shadowColor = '#ff0000';
 
-            // Vẽ Equalizer Bars nhảy múa 4 CẠNH VIỀN
             for (let i = 0; i < numBars; i++) {{
-                let val = dataArray[i] / 255.0; // Giá trị từ 0.0 - 1.0
-                let barLen = val * 55; // Chiều cao sóng tối đa 55px
+                let val = dataArray[i] / 255.0;
+                let barLen = val * 55;
 
-                // 1. Viền Trên
                 let xTop = offset + (i / numBars) * w;
                 vCtx.fillRect(xTop, offset - barLen, w / numBars - 2, barLen);
 
-                // 2. Viền Dưới
                 let xBot = offset + (i / numBars) * w;
                 vCtx.fillRect(xBot, offset + h, w / numBars - 2, barLen);
 
-                // 3. Viền Trái
                 let yLeft = offset + (i / numBars) * h;
                 vCtx.fillRect(offset - barLen, yLeft, barLen, h / numBars - 2);
 
-                // 4. Viền Phải
                 let yRight = offset + (i / numBars) * h;
                 vCtx.fillRect(offset + w, yRight, barLen, h / numBars - 2);
             }}
 
-            // Phát tia sét xung quanh viền khi nhạc chạm Bass mạnh
             if(avg > 140) {{
                 let intensity = (avg - 140) / 115;
                 if(Math.random() > 0.3) drawLightning(offset, offset, offset + w, offset, intensity);
@@ -277,30 +273,37 @@ html_code = f"""
 </html>
 """
 
+# Hiển thị giao diện Cyberpunk chính
 st.components.v1.html(html_code, height=950, scrolling=True)
 
-st.markdown("---")
-st.subheader("⚙️ Quản lý nội dung trang Web (Admin Panel)")
+# --- KHU VỰC ADMIN DÀNH RIÊNG CHO BẠN (ẨN TRONG SIDEBAR MẤT MẬT KHẨU) ---
+st.sidebar.title("🔐 Đăng nhập Admin")
+input_pwd = st.sidebar.text_input("Nhập mật khẩu để quản lý:", type="password")
 
-col1, col2 = st.columns(2)
+if input_pwd == ADMIN_PASSWORD:
+    st.sidebar.success("Xác thực thành công!")
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("⚙️ Quản lý nội dung")
 
-with col1:
-    st.write("📝 **Cập nhật Ghi chú:**")
-    new_note = st.text_area("Nhập nội dung ghi chú mới:", value=saved_note)
-    if st.button("Lưu Ghi Chú"):
+    # 1. Quản lý Ghi chú
+    new_note = st.sidebar.text_area("Cập nhật ghi chú mới:", value=saved_note)
+    if st.sidebar.button("Lưu Ghi Chú"):
         with open(NOTE_FILE, "w", encoding="utf-8") as f:
             f.write(new_note)
-        st.success("Đã lưu ghi chú vĩnh viễn!")
+        st.sidebar.success("Đã cập nhật ghi chú!")
         st.rerun()
 
-with col2:
-    st.write("🖼️ **Thêm hình ảnh vào Bộ sưu tập:**")
-    uploaded_files = st.file_uploader("Chọn ảnh cần tải lên:", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
-    if st.button("Tải Ảnh Lên Web"):
+    st.sidebar.markdown("---")
+
+    # 2. Quản lý Bộ sưu tập Ảnh
+    uploaded_files = st.sidebar.file_uploader("Thêm ảnh vào bộ sưu tập:", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+    if st.sidebar.button("Tải Ảnh Lên"):
         if uploaded_files:
             for u_file in uploaded_files:
                 save_path = os.path.join(IMAGE_DIR, u_file.name)
                 with open(save_path, "wb") as f:
                     f.write(u_file.getbuffer())
-            st.success("Đã tải ảnh lên và lưu vĩnh viễn!")
+            st.sidebar.success("Đã đăng tải ảnh!")
             st.rerun()
+elif input_pwd != "":
+    st.sidebar.error("Mật khẩu không chính xác!")
