@@ -2,13 +2,13 @@
 import streamlit as st
 import base64
 import os
-import re
+import json
 
 st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wide")
 
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
-YOUTUBE_FILE = "youtube_url.txt"
+SOCIAL_FILE = "social_links.json"
 
 # 🔑 KHÓA BÍ MẬT TRÊN URL
 SECRET_KEY = "17022006"
@@ -22,34 +22,24 @@ def get_base64(file_path):
             return base64.b64encode(f.read()).decode('utf-8')
     return ""
 
-def extract_youtube_id(url):
-    if not url:
-        return "jfKfPfyJRdk"
-    patterns = [
-        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
-        r'youtu\.be\/([0-9A-Za-z_-]{11})',
-        r'embed\/([0-9A-Za-z_-]{11})',
-        r'shorts\/([0-9A-Za-z_-]{11})'
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    if len(url.strip()) == 11 and re.match(r'^[0-9A-Za-z_-]{11}$', url.strip()):
-        return url.strip()
-    return "jfKfPfyJRdk"
-
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
 img_base64 = get_base64(image_path)
 
-saved_yt_url = "https://www.youtube.com/watch?v=jfKfPfyJRdk"
-if os.path.exists(YOUTUBE_FILE):
-    with open(YOUTUBE_FILE, "r", encoding="utf-8") as f:
-        content = f.read().strip()
-        if content:
-            saved_yt_url = content
+# Đọc / Ghi Social Links & Link Nhạc MP3
+default_socials = {
+    "facebook": "https://facebook.com",
+    "youtube": "https://youtube.com",
+    "tiktok": "https://tiktok.com",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" # Link mp3 mặc định
+}
 
-yt_id = extract_youtube_id(saved_yt_url)
+if os.path.exists(SOCIAL_FILE):
+    try:
+        with open(SOCIAL_FILE, "r", encoding="utf-8") as f:
+            social_data = json.load(f)
+            default_socials.update(social_data)
+    except Exception:
+        pass
 
 saved_note = ""
 if os.path.exists(NOTE_FILE):
@@ -84,6 +74,7 @@ html_code = f"""
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {{
             box-sizing: border-box;
@@ -128,7 +119,6 @@ html_code = f"""
         }}
         @keyframes blink {{ 0%, 100% {{ opacity: 0.3; transform: scale(0.8); }} 50% {{ opacity: 1; transform: scale(1.2); }} }}
 
-        /* 🌟 HIỆU ỨNG VIỀN QUÉT SÁNG DẠNG NEON CHO CÁC KHUNG */
         @keyframes neonGlowPulse {{
             0% {{
                 border-color: #ff0000;
@@ -163,7 +153,7 @@ html_code = f"""
 
         .section {{ margin-top: 25px; text-align: center; position: relative; z-index: 2; width: 100%; }}
 
-        /* Ô Ghi chú sáng động */
+        /* Ô Ghi chú */
         .note-box {{
             width: 100%; 
             min-height: 100px; 
@@ -188,48 +178,61 @@ html_code = f"""
             text-shadow: 0 0 8px #ff0000;
         }}
 
-        /* Ô Trình phát YouTube sáng động */
-        .yt-player-container {{
+        /* 🌟 KHUNG LOGO MXH CYBERPUNK */
+        .social-container {{
             background: rgba(25, 0, 0, 0.92);
             border: 2px solid #ff0000;
-            padding: 12px;
+            padding: 20px 15px;
             margin-top: 15px;
             animation: neonGlowPulse 2.8s infinite ease-in-out;
             position: relative; 
             z-index: 3;
-            transition: transform 0.3s ease;
             width: 100%;
         }}
 
-        .video-responsive {{
-            overflow: hidden;
-            padding-bottom: 56.25%;
-            position: relative;
-            height: 0;
-            background: #000;
-            border: 1px solid rgba(255,0,0,0.8);
-            box-shadow: 0 0 15px rgba(255,0,0,0.5);
-            width: 100%;
-        }}
-
-        .video-responsive iframe, .video-responsive div#player {{
-            left: 0; top: 0;
-            height: 100%; width: 100%;
-            position: absolute;
-            border: none;
-        }}
-
-        .track-name {{
+        .social-title {{
             font-family: 'Orbitron', sans-serif;
-            font-size: 14px;
-            margin-bottom: 10px;
+            font-size: 16px;
+            margin-bottom: 18px;
             text-transform: uppercase;
             letter-spacing: 1.5px;
             color: #ff3333;
             text-shadow: 0 0 8px #ff0000;
         }}
 
-        /* Khung bộ sưu tập & Thẻ ảnh rực rỡ */
+        .social-icons {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+        }}
+
+        .social-btn {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: rgba(10, 0, 0, 0.8);
+            border: 2px solid #ff0000;
+            color: #ff3333;
+            font-size: 28px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            cursor: pointer;
+        }}
+
+        .social-btn:hover {{
+            transform: translateY(-5px) scale(1.1);
+            color: #ffffff;
+            border-color: #ffffff;
+            box-shadow: 0 0 25px #ff0000, inset 0 0 10px #ff0000;
+            background: #ff0000;
+        }}
+
+        /* Khung bộ sưu tập */
         #gallery {{ 
             display: flex; 
             flex-wrap: wrap; 
@@ -262,47 +265,32 @@ html_code = f"""
             z-index: 10;
         }}
 
-        /* 📱 TỐI ƯU RIÊNG CHO ĐIỆN THOẠI (MEDIA QUERIES) */
         @media (max-width: 768px) {{
-            body {{
-                padding: 5px 0;
-            }}
-            .container {{
-                padding: 15px 10px;
-                border-width: 1.5px;
-            }}
+            body {{ padding: 5px 0; }}
+            .container {{ padding: 15px 10px; border-width: 1.5px; }}
             #viz-canvas {{
-                top: -10px;
-                left: -10px;
-                width: calc(100% + 20px);
-                height: calc(100% + 20px);
+                top: -10px; left: -10px;
+                width: calc(100% + 20px); height: calc(100% + 20px);
             }}
-            .note-box {{
-                font-size: 15px;
-                padding: 10px;
-                min-height: 80px;
-            }}
-            .yt-player-container {{
-                padding: 8px;
-            }}
-            .track-name {{
-                font-size: 12px;
-                letter-spacing: 1px;
-            }}
-            #gallery {{
-                gap: 8px;
-            }}
+            .note-box {{ font-size: 15px; padding: 10px; min-height: 80px; }}
+            .social-container {{ padding: 15px 10px; }}
+            .social-title {{ font-size: 13px; margin-bottom: 12px; }}
+            .social-icons {{ gap: 20px; }}
+            .social-btn {{ width: 50px; height: 50px; font-size: 22px; }}
+            #gallery {{ gap: 8px; }}
             .img-card {{
-                width: calc(50vw - 25px);
-                max-width: 160px;
-                height: calc(50vw - 25px);
-                max-height: 160px;
+                width: calc(50vw - 25px); max-width: 160px;
+                height: calc(50vw - 25px); max-height: 160px;
             }}
         }}
     </style>
 </head>
 <body>
     <canvas id="bg-canvas"></canvas>
+    
+    <!-- Audio ẩn phát nhạc MP3 -->
+    <audio id="bg-audio" src="{default_socials['audio_url']}" loop preload="auto"></audio>
+
     <div class="container" id="mainContainer">
         <canvas id="viz-canvas"></canvas>
         
@@ -314,11 +302,20 @@ html_code = f"""
             <div class="note-box">{saved_note if saved_note else "CHƯA CÓ GHI CHÚ NÀO ĐƯỢC LƯU..."}</div>
         </div>
 
+        <!-- 🌟 MẠNG XÃ HỘI -->
         <div class="section">
-            <div class="yt-player-container">
-                <div class="track-name">⚡ Cyberpunk Youtube Player ⚡</div>
-                <div class="video-responsive">
-                    <div id="player"></div>
+            <div class="social-container">
+                <div class="social-title">⚡ KẾT NỐI MẠNG XÃ HỘI ⚡</div>
+                <div class="social-icons">
+                    <a href="{default_socials['facebook']}" target="_blank" class="social-btn" title="Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="{default_socials['youtube']}" target="_blank" class="social-btn" title="YouTube">
+                        <i class="fab fa-youtube"></i>
+                    </a>
+                    <a href="{default_socials['tiktok']}" target="_blank" class="social-btn" title="TikTok">
+                        <i class="fab fa-tiktok"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -331,19 +328,16 @@ html_code = f"""
     </div>
 
     <script>
-        // Load YouTube IFrame API
-        var tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         const vCanvas = document.getElementById('viz-canvas');
         const vCtx = vCanvas.getContext('2d');
+        const audio = document.getElementById('bg-audio');
+
         let particles = [];
         let phase = 0;
-        let isPlaying = false;
+        let audioCtx, analyser, dataArray;
+        let isAudioSetup = false;
 
         function initCanvas() {{
             canvas.width = window.innerWidth; 
@@ -354,31 +348,34 @@ html_code = f"""
         window.addEventListener('resize', initCanvas); 
         initCanvas();
 
-        let player;
-        function onYouTubeIframeAPIReady() {{
-            player = new YT.Player('player', {{
-                height: '100%',
-                width: '100%',
-                videoId: '{yt_id}',
-                playerVars: {{
-                    'autoplay': 0,
-                    'controls': 1,
-                    'rel': 0,
-                    'enablejsapi': 1
-                }},
-                events: {{
-                    'onStateChange': onPlayerStateChange
-                }}
-            }});
-        }}
-
-        function onPlayerStateChange(event) {{
-            if (event.data === YT.PlayerState.PLAYING) {{
-                isPlaying = true;
-            }} else {{
-                isPlaying = false;
+        // Kích hoạt Audio Context khi có tương tác
+        function setupAudioContext() {{
+            if (isAudioSetup) return;
+            try {{
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                const source = audioCtx.createMediaElementSource(audio);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyser.fftSize = 64;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                isAudioSetup = true;
+            }} catch (e) {{
+                console.log("Audio Context Error: ", e);
             }}
         }}
+
+        // Phát nhạc ngay khi chạm/click vào trang
+        function playAudio() {{
+            setupAudioContext();
+            if (audioCtx && audioCtx.state === 'suspended') {{
+                audioCtx.resume();
+            }}
+            audio.play().catch(e => console.log("Auto-play blocked:", e));
+        }}
+
+        window.addEventListener('click', playAudio, {{ once: true }});
+        window.addEventListener('touchstart', playAudio, {{ once: true }});
 
         function drawLightning(x1, y1, x2, y2, intensity) {{
             vCtx.strokeStyle = `rgba(255, 30, 30, ${{intensity}})`;
@@ -427,10 +424,22 @@ html_code = f"""
 
             if (w <= 0 || h <= 0) return;
 
+            let avgAmp = 0;
+            if (isAudioSetup && analyser && !audio.paused) {{
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {{
+                    sum += dataArray[i];
+                }}
+                avgAmp = sum / dataArray.length;
+            }}
+
+            let isPlaying = !audio.paused && avgAmp > 5;
+
             if (isPlaying) {{
                 phase += 0.12;
             }} else {{
-                phase += 0.02;
+                phase += 0.03;
             }}
 
             let topPts = [], botPts = [], leftPts = [], rightPts = [];
@@ -438,11 +447,12 @@ html_code = f"""
             for (let i = 0; i <= len; i++) {{
                 let amp = 0;
                 if (isPlaying) {{
-                    let bass = Math.sin(phase * 2.5) * (isMobile ? 10 : 18);
-                    let freq = Math.sin(phase + i * 0.4) * (isMobile ? 12 : 20) + Math.cos(phase * 1.8 + i * 0.3) * 8;
+                    let freqVal = dataArray ? (dataArray[i % dataArray.length] / 255.0) : 0.5;
+                    let bass = Math.sin(phase * 2.5) * (isMobile ? 12 : 22) * freqVal;
+                    let freq = Math.sin(phase + i * 0.4) * (isMobile ? 10 : 18) + Math.cos(phase * 1.8 + i * 0.3) * 8;
                     amp = Math.abs(bass + freq);
                 }} else {{
-                    amp = Math.sin(phase + i * 0.2) * (isMobile ? 2 : 4);
+                    amp = Math.sin(phase + i * 0.2) * (isMobile ? 3 : 5);
                 }}
 
                 topPts.push({{ x: offset + (i / len) * w, y: offset - amp }});
@@ -461,7 +471,7 @@ html_code = f"""
             drawCurvedWave(topPtsSub, 'rgba(255, 50, 50, 0.4)', 1, 8);
             drawCurvedWave(botPtsSub, 'rgba(255, 50, 50, 0.4)', 1, 8);
 
-            if (isPlaying && Math.random() > 0.7) {{
+            if (isPlaying && Math.random() > 0.65) {{
                 let intensity = Math.random() * 0.8 + 0.2;
                 drawLightning(offset, offset, offset + w, offset, intensity);
                 drawLightning(offset + w, offset, offset + w, offset + h, intensity);
@@ -514,7 +524,7 @@ html_code = f"""
 </html>
 """
 
-st.components.v1.html(html_code, height=1050, scrolling=True)
+st.components.v1.html(html_code, height=900, scrolling=True)
 
 # --- KHU VỰC ADMIN TRÊN SIDEBAR ---
 if is_admin:
@@ -522,13 +532,23 @@ if is_admin:
     st.sidebar.success("Đã mở khóa quyền quản trị!")
     st.sidebar.markdown("---")
 
-    # 1. Quản lý Link YouTube
-    st.sidebar.subheader("📺 Cập nhật Video YouTube")
-    new_yt_url = st.sidebar.text_input("Dán link YouTube mới:", value=saved_yt_url)
-    if st.sidebar.button("Đổi Video / Nhạc"):
-        with open(YOUTUBE_FILE, "w", encoding="utf-8") as f:
-            f.write(new_yt_url.strip())
-        st.sidebar.success("Đã cập nhật Video mới!")
+    # 1. Quản lý Link Mạng Xã Hội & Link Nhạc MP3
+    st.sidebar.subheader("🔗 Cập nhật Link MXH & Nhạc MP3")
+    fb_link = st.sidebar.text_input("Link Facebook:", value=default_socials.get("facebook", ""))
+    yt_link = st.sidebar.text_input("Link YouTube:", value=default_socials.get("youtube", ""))
+    tiktok_link = st.sidebar.text_input("Link TikTok:", value=default_socials.get("tiktok", ""))
+    audio_link = st.sidebar.text_input("Link Nhạc MP3 (Direct MP3 URL):", value=default_socials.get("audio_url", ""))
+
+    if st.sidebar.button("Lưu Link MXH & Nhạc"):
+        new_data = {
+            "facebook": fb_link.strip(),
+            "youtube": yt_link.strip(),
+            "tiktok": tiktok_link.strip(),
+            "audio_url": audio_link.strip()
+        }
+        with open(SOCIAL_FILE, "w", encoding="utf-8") as f:
+            json.dump(new_data, f, ensure_ascii=False, indent=4)
+        st.sidebar.success("Đã cập nhật liên kết mới!")
         st.rerun()
 
     st.sidebar.markdown("---")
