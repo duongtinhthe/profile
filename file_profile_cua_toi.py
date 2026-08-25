@@ -9,6 +9,7 @@ st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wi
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 SOCIAL_FILE = "social_links.json"
+AUDIO_FILE = "bg_music.mp3"
 
 # 🔑 KHÓA BÍ MẬT TRÊN URL
 SECRET_KEY = "17022006"
@@ -24,13 +25,13 @@ def get_base64(file_path):
 
 image_path = '6fe31b6eb6ef60282b0e05dca6dd4418.jpg'
 img_base64 = get_base64(image_path)
+audio_base64 = get_base64(AUDIO_FILE)
 
-# Đọc / Ghi Social Links & Link Nhạc MP3
+# Đọc / Ghi Social Links
 default_socials = {
     "facebook": "https://facebook.com",
     "youtube": "https://youtube.com",
-    "tiktok": "https://tiktok.com",
-    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" # Link mp3 mặc định
+    "tiktok": "https://tiktok.com"
 }
 
 if os.path.exists(SOCIAL_FILE):
@@ -67,6 +68,8 @@ if not is_admin:
         """,
         unsafe_allow_html=True
     )
+
+audio_src = f"data:audio/mp3;base64,{audio_base64}" if audio_base64 else ""
 
 html_code = f"""
 <!DOCTYPE html>
@@ -288,8 +291,8 @@ html_code = f"""
 <body>
     <canvas id="bg-canvas"></canvas>
     
-    <!-- Audio ẩn phát nhạc MP3 -->
-    <audio id="bg-audio" src="{default_socials['audio_url']}" loop preload="auto"></audio>
+    <!-- Audio ẩn phát file nhạc MP3 nội bộ -->
+    <audio id="bg-audio" src="{audio_src}" loop preload="auto"></audio>
 
     <div class="container" id="mainContainer">
         <canvas id="viz-canvas"></canvas>
@@ -348,9 +351,8 @@ html_code = f"""
         window.addEventListener('resize', initCanvas); 
         initCanvas();
 
-        // Kích hoạt Audio Context khi có tương tác
         function setupAudioContext() {{
-            if (isAudioSetup) return;
+            if (isAudioSetup || !audio.src) return;
             try {{
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioCtx.createAnalyser();
@@ -365,8 +367,8 @@ html_code = f"""
             }}
         }}
 
-        // Phát nhạc ngay khi chạm/click vào trang
         function playAudio() {{
+            if (!audio.src) return;
             setupAudioContext();
             if (audioCtx && audioCtx.state === 'suspended') {{
                 audioCtx.resume();
@@ -532,19 +534,32 @@ if is_admin:
     st.sidebar.success("Đã mở khóa quyền quản trị!")
     st.sidebar.markdown("---")
 
-    # 1. Quản lý Link Mạng Xã Hội & Link Nhạc MP3
-    st.sidebar.subheader("🔗 Cập nhật Link MXH & Nhạc MP3")
+    # 1. Tải nhạc MP3 từ máy tính lên
+    st.sidebar.subheader("🎵 Tải nhạc MP3 từ máy tính")
+    uploaded_audio = st.sidebar.file_uploader("Chọn file MP3 từ máy:", type=['mp3'])
+    if st.sidebar.button("Lưu File Nhạc"):
+        if uploaded_audio is not None:
+            with open(AUDIO_FILE, "wb") as f:
+                f.write(uploaded_audio.getbuffer())
+            st.sidebar.success("Đã lưu file MP3 mới thành công!")
+            st.rerun()
+
+    if os.path.exists(AUDIO_FILE):
+        st.sidebar.caption("✅ Đã có file MP3 lưu trên hệ thống.")
+
+    st.sidebar.markdown("---")
+
+    # 2. Quản lý Link Mạng Xã Hội
+    st.sidebar.subheader("🔗 Cập nhật Link MXH")
     fb_link = st.sidebar.text_input("Link Facebook:", value=default_socials.get("facebook", ""))
     yt_link = st.sidebar.text_input("Link YouTube:", value=default_socials.get("youtube", ""))
     tiktok_link = st.sidebar.text_input("Link TikTok:", value=default_socials.get("tiktok", ""))
-    audio_link = st.sidebar.text_input("Link Nhạc MP3 (Direct MP3 URL):", value=default_socials.get("audio_url", ""))
 
-    if st.sidebar.button("Lưu Link MXH & Nhạc"):
+    if st.sidebar.button("Lưu Link MXH"):
         new_data = {
             "facebook": fb_link.strip(),
             "youtube": yt_link.strip(),
-            "tiktok": tiktok_link.strip(),
-            "audio_url": audio_link.strip()
+            "tiktok": tiktok_link.strip()
         }
         with open(SOCIAL_FILE, "w", encoding="utf-8") as f:
             json.dump(new_data, f, ensure_ascii=False, indent=4)
@@ -553,7 +568,7 @@ if is_admin:
 
     st.sidebar.markdown("---")
 
-    # 2. Quản lý Ghi chú
+    # 3. Quản lý Ghi chú
     st.sidebar.subheader("📝 Quản lý ghi chú")
     new_note = st.sidebar.text_area("Cập nhật ghi chú mới:", value=saved_note)
     if st.sidebar.button("Lưu Ghi Chú"):
@@ -564,7 +579,7 @@ if is_admin:
 
     st.sidebar.markdown("---")
 
-    # 3. Quản lý Bộ sưu tập & Xoá Ảnh
+    # 4. Quản lý Bộ sưu tập & Xoá Ảnh
     st.sidebar.subheader("🖼️ Quản lý hình ảnh")
     uploaded_files = st.sidebar.file_uploader("Thêm ảnh mới:", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
     if st.sidebar.button("Tải Ảnh Lên"):
