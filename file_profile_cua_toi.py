@@ -3,6 +3,7 @@ import base64
 import json
 import os
 import streamlit as st
+from datetime import datetime
 
 st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wide")
 
@@ -10,6 +11,7 @@ NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 SOCIAL_FILE = "social_links.json"
 AUDIO_FILE = "bg_music.mp3"
+LOG_FILE = "upload_history.json"
 
 # 🔑 KHÓA BÍ MẬT TRÊN URL (?key=17022006)
 SECRET_KEY = "17022006"
@@ -17,13 +19,34 @@ SECRET_KEY = "17022006"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-
 def get_base64(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
     return ""
 
+def log_upload(category, file_name):
+    """Lưu lịch sử upload/cập nhật thông tin"""
+    history = []
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        except Exception:
+            history = []
+            
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    history.insert(0, {
+        "time": now,
+        "category": category,
+        "name": file_name
+    })
+    
+    # Lưu tối đa 50 bản ghi
+    history = history[:50]
+    
+    with open(LOG_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=4)
 
 image_path = "6fe31b6eb6ef60282b0e05dca6dd4418.jpg"
 img_base64 = get_base64(image_path)
@@ -238,6 +261,33 @@ html_code = f"""
             background: #ff0000;
         }}
 
+        /* NÚT PAUSE/PLAY NHẠC CYBERPUNK */
+        .music-control-btn {{
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: rgba(10, 0, 0, 0.9);
+            border: 2px solid #ff0000;
+            color: #ff0000;
+            font-size: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.7);
+            transition: all 0.3s ease;
+        }}
+        .music-control-btn:hover {{
+            transform: scale(1.1);
+            color: #ffffff;
+            border-color: #ffffff;
+            box-shadow: 0 0 25px #ff0000;
+        }}
+
         /* Khung bộ sưu tập */
         #gallery {{ 
             display: flex; 
@@ -288,6 +338,13 @@ html_code = f"""
                 width: calc(50vw - 25px); max-width: 160px;
                 height: calc(50vw - 25px); max-height: 160px;
             }}
+            .music-control-btn {{
+                bottom: 15px;
+                right: 15px;
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }}
         }}
     </style>
 </head>
@@ -296,6 +353,11 @@ html_code = f"""
     
     <!-- Audio ẩn phát file nhạc MP3 nội bộ -->
     <audio id="bg-audio" src="{audio_src}" loop preload="auto"></audio>
+
+    <!-- Nút Bật/Tắt Nhạc (Play / Pause) -->
+    <button id="musicToggleBtn" class="music-control-btn" title="Bật / Tắt Nhạc">
+        <i class="fas fa-music" id="musicIcon"></i>
+    </button>
 
     <div class="container" id="mainContainer">
         <canvas id="viz-canvas"></canvas>
@@ -339,6 +401,8 @@ html_code = f"""
         const vCanvas = document.getElementById('viz-canvas');
         const vCtx = vCanvas.getContext('2d');
         const audio = document.getElementById('bg-audio');
+        const musicToggleBtn = document.getElementById('musicToggleBtn');
+        const musicIcon = document.getElementById('musicIcon');
 
         let particles = [];
         let phase = 0;
@@ -376,9 +440,37 @@ html_code = f"""
             if (audioCtx && audioCtx.state === 'suspended') {{
                 audioCtx.resume();
             }}
-            audio.play().catch(e => console.log("Auto-play blocked:", e));
+            audio.play().then(() => {{
+                updateMusicIcon(true);
+            }}).catch(e => console.log("Auto-play blocked:", e));
         }}
 
+        function toggleMusic() {{
+            if (!audio.src) return;
+            setupAudioContext();
+            if (audioCtx && audioCtx.state === 'suspended') {{
+                audioCtx.resume();
+            }}
+            if (audio.paused) {{
+                audio.play();
+                updateMusicIcon(true);
+            }} else {{
+                audio.pause();
+                updateMusicIcon(false);
+            }}
+        }}
+
+        function updateMusicIcon(isPlaying) {{
+            if (isPlaying) {{
+                musicIcon.className = "fas fa-pause";
+                musicToggleBtn.style.boxShadow = "0 0 20px #ff0000";
+            }} else {{
+                musicIcon.className = "fas fa-play";
+                musicToggleBtn.style.boxShadow = "0 0 10px rgba(255, 0, 0, 0.4)";
+            }}
+        }}
+
+        musicToggleBtn.addEventListener('click', toggleMusic);
         window.addEventListener('click', playAudio, {{ once: true }});
         window.addEventListener('touchstart', playAudio, {{ once: true }});
 
@@ -546,6 +638,7 @@ if is_admin:
         if uploaded_audio is not None:
             with open(AUDIO_FILE, "wb") as f:
                 f.write(uploaded_audio.getbuffer())
+            log_upload("Nhạc MP3", uploaded_audio.name)
             st.sidebar.success("Đã lưu file MP3 mới thành công!")
             st.rerun()
 
@@ -574,6 +667,7 @@ if is_admin:
         }
         with open(SOCIAL_FILE, "w", encoding="utf-8") as f:
             json.dump(new_data, f, ensure_ascii=False, indent=4)
+        log_upload("Liên kết MXH", "Cập nhật các đường dẫn MXH")
         st.sidebar.success("Đã cập nhật liên kết mới!")
         st.rerun()
 
@@ -585,6 +679,7 @@ if is_admin:
     if st.sidebar.button("Lưu Ghi Chú"):
         with open(NOTE_FILE, "w", encoding="utf-8") as f:
             f.write(new_note)
+        log_upload("Ghi chú", f"Đã đổi nội dung ghi chú")
         st.sidebar.success("Đã cập nhật ghi chú!")
         st.rerun()
 
@@ -601,6 +696,7 @@ if is_admin:
                 save_path = os.path.join(IMAGE_DIR, u_file.name)
                 with open(save_path, "wb") as f:
                     f.write(u_file.getbuffer())
+                log_upload("Hình ảnh", u_file.name)
             st.sidebar.success("Đã đăng tải ảnh!")
             st.rerun()
 
@@ -611,5 +707,26 @@ if is_admin:
             col_img.caption(img_name)
             if col_btn.button("❌", key=f"del_{img_name}"):
                 os.remove(os.path.join(IMAGE_DIR, img_name))
+                log_upload("Xóa ảnh", img_name)
                 st.sidebar.success(f"Đã xoá {img_name}")
                 st.rerun()
+
+    st.sidebar.markdown("---")
+
+    # 5. Lịch sử Upload & Thay đổi
+    st.sidebar.subheader("📋 Lịch sửUpload / Thay đổi")
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, "r", encoding="utf-8") as f:
+                logs = json.load(f)
+                if logs:
+                    for item in logs[:10]:  # Hiển thị 10 mục gần nhất
+                        st.sidebar.caption(
+                            f"⏱️ **{item['time']}**\n- [{item['category']}] {item['name']}"
+                        )
+                else:
+                    st.sidebar.info("Chưa có lịch sử upload nào.")
+        except Exception:
+            st.sidebar.info("Chưa có lịch sử upload.")
+    else:
+        st.sidebar.info("Chưa có lịch sử upload.")
