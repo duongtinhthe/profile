@@ -1,140 +1,125 @@
 import base64
-import json
 import os
 import streamlit as st
 
-# Setup thư mục lưu trữ file upload thực tế
-UPLOAD_DIR = "uploaded_files"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-DATA_NOTES_FILE = "data_notes.txt"
-SOCIAL_LINKS_FILE = "social_links.json"
-
 st.set_page_config(
-    page_title="Trang Cá Nhân & Quản Lý Dữ Liệu", page_icon="🎵", layout="centered"
+    page_title="Profile Cá Nhân",
+    page_icon="✨",
+    layout="centered"
 )
 
 # -------------------------------------------------------------------
-# 1. KHỞI TẠO BỘ NHỚ TẠM (SESSION STATE)
+# 1. TÙY CHỈNH STYLES VÀ GIAO DIỆN PROFILE
 # -------------------------------------------------------------------
-if "uploaded_file_info" not in st.session_state:
-    st.session_state["uploaded_file_info"] = None
-
-if "notes" not in st.session_state:
-    if os.path.exists(DATA_NOTES_FILE):
-        with open(DATA_NOTES_FILE, "r", encoding="utf-8") as f:
-            st.session_state["notes"] = f.read()
-    else:
-        st.session_state["notes"] = ""
-
-if "social_links" not in st.session_state:
-    if os.path.exists(SOCIAL_LINKS_FILE):
-        with open(SOCIAL_LINKS_FILE, "r", encoding="utf-8") as f:
-            st.session_state["social_links"] = json.load(f)
-    else:
-        st.session_state["social_links"] = {
-            "Facebook": "https://facebook.com",
-            "Discord": "https://discord.com",
-            "YouTube": "https://youtube.com",
-        }
-
-st.title("📌 Trang Profile & Quản Lý File")
-
-# -------------------------------------------------------------------
-# 2. XỬ LÝ UPLOAD FILE (KHÔNG MẤT DỮ LIỆU KHI BẤM LINK)
-# -------------------------------------------------------------------
-st.subheader("📤 Tải lên Tệp / Nhạc nền / Ảnh")
-
-uploaded_file = st.file_uploader(
-    "Chọn file để tải lên (Ảnh, Nhạc MP3, Tài liệu...)",
-    type=["png", "jpg", "mp3", "txt", "pdf", "docx"],
-)
-
-if uploaded_file is not None:
-    save_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
-    with open(save_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-
-    st.session_state["uploaded_file_info"] = {
-        "name": uploaded_file.name,
-        "path": save_path,
-        "size": uploaded_file.size,
+st.markdown("""
+    <style>
+    /* Gradient nền và căn giữa profile */
+    .stApp {
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        color: #ffffff;
     }
-    st.success(f"Dữ liệu đã được lưu an toàn: **{uploaded_file.name}**")
+    
+    /* Thiết kế thẻ Profile */
+    .profile-card {
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .avatar-img {
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #8b5cf6;
+        box-shadow: 0px 8px 20px rgba(139, 92, 246, 0.4);
+        margin-bottom: 15px;
+    }
+    
+    .profile-name {
+        font-size: 26px;
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #ffffff;
+    }
+    
+    .profile-bio {
+        font-size: 15px;
+        color: #cbd5e1;
+        margin-bottom: 25px;
+    }
 
-# Hiển thị thông tin file đã upload
-if st.session_state["uploaded_file_info"] is not None:
-    file_data = st.session_state["uploaded_file_info"]
-    st.info(
-        f"📄 **File đang lưu trong phiên:** `{file_data['name']}` ({file_data['size']} bytes)"
-    )
-
-    if st.button("🗑️ Xóa file upload hiện tại"):
-        if os.path.exists(file_data["path"]):
-            os.remove(file_data["path"])
-        st.session_state["uploaded_file_info"] = None
-        st.rerun()
-
-st.divider()
-
-# -------------------------------------------------------------------
-# 3. MỤC GHI CHÚ (LƯU VÀO DATA_NOTES.TXT)
-# -------------------------------------------------------------------
-st.subheader("📝 Ghi Chú Cá Nhân")
-user_notes = st.text_area(
-    "Nội dung ghi chú:", value=st.session_state["notes"], height=120
-)
-
-if st.button("💾 Lưu Ghi Chú"):
-    st.session_state["notes"] = user_notes
-    with open(DATA_NOTES_FILE, "w", encoding="utf-8") as f:
-        f.write(user_notes)
-    st.success("Đã lưu ghi chú vào `data_notes.txt`!")
-
-st.divider()
-
-# -------------------------------------------------------------------
-# 4. DANH SÁCH LINK MẠNG XÃ HỘI (AN TOÀN - MỞ TAB MỚI)
-# -------------------------------------------------------------------
-st.subheader("🌐 Liên Kết Mạng Xã Hội")
-
-cols = st.columns(len(st.session_state["social_links"]))
-
-for idx, (platform, url) in enumerate(st.session_state["social_links"].items()):
-    with cols[idx]:
-        html_link = f"""
-        <a href="{url}" target="_blank" style="
-            display: inline-block;
-            width: 100%;
-            padding: 10px 0px;
-            text-align: center;
-            background-color: #262730;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
-            border: 1px solid #464b5d;
-        ">🔗 {platform}</a>
-        """
-        st.markdown(html_link, unsafe_allow_html=True)
-
-st.caption("⚡ *Các liên kết đều tự động mở tab mới để giữ toàn bộ dữ liệu file & ghi chú của bạn không bị mất.*")
+    /* Styling nút link mạng xã hội dạng danh sách */
+    .social-btn {
+        display: block;
+        width: 100%;
+        padding: 14px 20px;
+        margin: 10px 0;
+        background: rgba(255, 255, 255, 0.07);
+        color: #ffffff !important;
+        text-decoration: none !important;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .social-btn:hover {
+        background: rgba(139, 92, 246, 0.3);
+        border-color: #8b5cf6;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(139, 92, 246, 0.3);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
-# 5. NÚT PAUSE/PLAY NHẠC NỀN CỐ ĐỊNH Ở GÓC DƯỚI BÊN PHẢI (FLOATING BUTTON)
+# 2. THÔNG TIN PROFILE CỦA BẠN (Chỉnh sửa thông tin tại đây)
 # -------------------------------------------------------------------
-# Nếu có file MP3 đã upload, tự động lấy làm nhạc nền, nếu không dùng file mp3 mặc định
+NAME = "Nguyễn Văn A"
+BIO = "Architecture Student @ HUCE 🏛️ | Gamer 🎮 | Photography Enthusiast 📸"
+
+# Link ảnh đại diện (Có thể thay bằng link online hoặc file avatar.jpg)
+AVATAR_URL = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500"
+
+# Danh sách Liên kết Mạng xã hội
+SOCIAL_LINKS = [
+    {"title": "📘 Facebook Profile", "url": "https://facebook.com"},
+    {"title": "💬 Discord Community", "url": "https://discord.com"},
+    {"title": "▶️ Youtube Channel", "url": "https://youtube.com"},
+    {"title": "📷 Instagram Portfolio", "url": "https://instagram.com"},
+]
+
+# -------------------------------------------------------------------
+# 3. HIỂN THỊ PROFILE
+# -------------------------------------------------------------------
+# Ảnh đại diện, Tên & Mô tả
+st.markdown(f"""
+    <div class="profile-card">
+        <img src="{AVATAR_URL}" class="avatar-img" alt="Avatar">
+        <div class="profile-name">{NAME}</div>
+        <div class="profile-bio">{BIO}</div>
+    </div>
+""", unsafe_allow_html=True)
+
+# Danh sách nút link Mạng xã hội
+for link in SOCIAL_LINKS:
+    st.markdown(f"""
+        <a href="{link['url']}" target="_blank" class="social-btn">
+            {link['title']}
+        </a>
+    """, unsafe_allow_html=True)
+
+# -------------------------------------------------------------------
+# 4. NHẠC NỀN & NÚT PAUSE NHỎ NẰM GÓC DƯỚI BÊN PHẢI
+# -------------------------------------------------------------------
+MUSIC_FILE = "bg_music.mp3"  # Đặt file nhạc MP3 của bạn cùng thư mục với script này
+
 audio_src = ""
-if (
-    st.session_state["uploaded_file_info"]
-    and st.session_state["uploaded_file_info"]["name"].lower().endswith(".mp3")
-):
-    bg_music_path = st.session_state["uploaded_file_info"]["path"]
-    with open(bg_music_path, "rb") as f:
-        audio_bytes = f.read()
-        audio_src = f"data:audio/mp3;base64,{base64.b64encode(audio_bytes).decode()}"
-elif os.path.exists("bg_music.mp3"):
-    with open("bg_music.mp3", "rb") as f:
+if os.path.exists(MUSIC_FILE):
+    with open(MUSIC_FILE, "rb") as f:
         audio_bytes = f.read()
         audio_src = f"data:audio/mp3;base64,{base64.b64encode(audio_bytes).decode()}"
 
@@ -142,24 +127,24 @@ if audio_src:
     player_html = f"""
     <audio id="bg-audio" loop autoplay src="{audio_src}"></audio>
 
-    <button id="music-toggle-btn" onclick="toggleAudio()" style="
+    <button id="music-toggle-btn" onclick="toggleAudio()" title="Bật / Tắt Nhạc" style="
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 9999;
-        width: 45px;
-        height: 45px;
+        bottom: 24px;
+        right: 24px;
+        z-index: 99999;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
-        background-color: #ff4b4b;
+        background-color: #8b5cf6;
         color: white;
-        border: none;
+        border: 2px solid rgba(255, 255, 255, 0.2);
         cursor: pointer;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        font-size: 18px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        font-size: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: transform 0.2s, background-color 0.2s;
+        transition: all 0.2s ease-in-out;
     ">⏸️</button>
 
     <script>
@@ -169,11 +154,11 @@ if audio_src:
         if (audio.paused) {{
             audio.play();
             btn.innerHTML = "⏸️";
-            btn.style.backgroundColor = "#ff4b4b";
+            btn.style.backgroundColor = "#8b5cf6";
         }} else {{
             audio.pause();
             btn.innerHTML = "▶️";
-            btn.style.backgroundColor = "#0e1117";
+            btn.style.backgroundColor = "#334155";
         }}
     }}
     </script>
