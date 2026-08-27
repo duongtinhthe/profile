@@ -2,11 +2,12 @@
 import base64
 import json
 import os
-import streamlit as st
 from datetime import datetime
+import streamlit as st
 
 st.set_page_config(page_title="Profile Của Tôi", page_icon="🔴", layout="wide")
 
+# Các file và thư mục lưu trữ dữ liệu vĩnh viễn
 NOTE_FILE = "data_notes.txt"
 IMAGE_DIR = "uploaded_images"
 SOCIAL_FILE = "social_links.json"
@@ -16,17 +17,24 @@ LOG_FILE = "upload_history.json"
 # 🔑 KHÓA BÍ MẬT TRÊN URL (?key=17022006)
 SECRET_KEY = "17022006"
 
+# Tạo thư mục lưu ảnh nếu chưa có
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
+
 def get_base64(file_path):
+    """Đọc file và chuyển thành dạng base64 an toàn"""
     if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
+        try:
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+        except Exception:
+            return ""
     return ""
 
+
 def log_upload(category, file_name):
-    """Lưu lịch sử upload/cập nhật thông tin"""
+    """Lưu nhật ký lịch sử upload vĩnh viễn vào file JSON"""
     history = []
     if os.path.exists(LOG_FILE):
         try:
@@ -34,31 +42,31 @@ def log_upload(category, file_name):
                 history = json.load(f)
         except Exception:
             history = []
-            
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    history.insert(0, {
-        "time": now,
-        "category": category,
-        "name": file_name
-    })
-    
-    # Lưu tối đa 50 bản ghi
-    history = history[:50]
-    
+    history.insert(0, {"time": now, "category": category, "name": file_name})
+    history = history[:50]  # Giữ 50 bản ghi gần nhất
+
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(history, f, ensure_ascii=False, indent=4)
 
+
+# --- 1. TẢI VÀ ĐỒNG BỘ DỮ LIỆU ĐÃ LƯU TỪ ĐĨA CỨNG ---
+
+# Đọc Nhạc MP3
+audio_base64 = get_base64(AUDIO_FILE)
+audio_src = f"data:audio/mp3;base64,{audio_base64}" if audio_base64 else ""
+
+# Đọc Ảnh Đại Diện chính
 image_path = "6fe31b6eb6ef60282b0e05dca6dd4418.jpg"
 img_base64 = get_base64(image_path)
-audio_base64 = get_base64(AUDIO_FILE)
 
-# Đọc / Ghi Social Links
+# Đọc Link Mạng Xã Hội
 default_socials = {
     "facebook": "https://facebook.com",
     "youtube": "https://youtube.com",
     "tiktok": "https://tiktok.com",
 }
-
 if os.path.exists(SOCIAL_FILE):
     try:
         with open(SOCIAL_FILE, "r", encoding="utf-8") as f:
@@ -67,11 +75,16 @@ if os.path.exists(SOCIAL_FILE):
     except Exception:
         pass
 
+# Đọc Ghi Chú
 saved_note = ""
 if os.path.exists(NOTE_FILE):
-    with open(NOTE_FILE, "r", encoding="utf-8") as f:
-        saved_note = f.read()
+    try:
+        with open(NOTE_FILE, "r", encoding="utf-8") as f:
+            saved_note = f.read()
+    except Exception:
+        saved_note = ""
 
+# Đọc Bộ Sưu Tập Ảnh
 saved_images_html = ""
 image_list = sorted(os.listdir(IMAGE_DIR))
 for img_name in image_list:
@@ -80,7 +93,7 @@ for img_name in image_list:
     if b64:
         saved_images_html += f'<div class="img-card-wrapper"><img src="data:image/png;base64,{b64}" class="img-card"></div>'
 
-# Kiểm tra quyền Admin qua URL parameter
+# Kiểm tra quyền Admin qua tham số URL (?key=17022006)
 query_params = st.query_params
 is_admin = query_params.get("key") == SECRET_KEY
 
@@ -95,7 +108,7 @@ if not is_admin:
         unsafe_allow_html=True,
     )
 
-audio_src = f"data:audio/mp3;base64,{audio_base64}" if audio_base64 else ""
+# --- 2. GIAO DIỆN HIỂN THỊ CHÍNH (HTML/CSS/JS) ---
 
 html_code = f"""
 <!DOCTYPE html>
@@ -105,9 +118,7 @@ html_code = f"""
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {{
-            box-sizing: border-box;
-        }}
+        * {{ box-sizing: border-box; }}
         body {{
             font-family: 'Rajdhani', sans-serif;
             background-color: #050000;
@@ -207,7 +218,7 @@ html_code = f"""
             text-shadow: 0 0 8px #ff0000;
         }}
 
-        /* KHUNG LOGO MXH CYBERPUNK */
+        /* KHUNG MXH CYBERPUNK */
         .social-container {{
             background: rgba(25, 0, 0, 0.92);
             border: 2px solid #ff0000;
@@ -261,7 +272,7 @@ html_code = f"""
             background: #ff0000;
         }}
 
-        /* NÚT PAUSE/PLAY NHẠC CYBERPUNK */
+        /* NÚT PAUSE/PLAY NHẠC */
         .music-control-btn {{
             position: fixed;
             bottom: 20px;
@@ -339,10 +350,8 @@ html_code = f"""
                 height: calc(50vw - 25px); max-height: 160px;
             }}
             .music-control-btn {{
-                bottom: 15px;
-                right: 15px;
-                width: 45px;
-                height: 45px;
+                bottom: 15px; right: 15px;
+                width: 45px; height: 45px;
                 font-size: 18px;
             }}
         }}
@@ -351,10 +360,8 @@ html_code = f"""
 <body>
     <canvas id="bg-canvas"></canvas>
     
-    <!-- Audio ẩn phát file nhạc MP3 nội bộ -->
     <audio id="bg-audio" src="{audio_src}" loop preload="auto"></audio>
 
-    <!-- Nút Bật/Tắt Nhạc (Play / Pause) -->
     <button id="musicToggleBtn" class="music-control-btn" title="Bật / Tắt Nhạc">
         <i class="fas fa-music" id="musicIcon"></i>
     </button>
@@ -370,7 +377,6 @@ html_code = f"""
             <div class="note-box">{saved_note if saved_note else "CHƯA CÓ GHI CHÚ NÀO ĐƯỢC LƯU..."}</div>
         </div>
 
-        <!-- MẠNG XÃ HỘI -->
         <div class="section">
             <div class="social-container">
                 <div class="social-title">⚡ KẾT NỐI MẠNG XÃ HỘI ⚡</div>
@@ -623,14 +629,14 @@ html_code = f"""
 
 st.components.v1.html(html_code, height=900, scrolling=True)
 
-# --- KHU VỰC ADMIN TRÊN SIDEBAR ---
+# --- 3. KHU VỰC THAO TÁC ADMIN (SIDEBAR) ---
 if is_admin:
     st.sidebar.title("👑 Chế độ Admin")
     st.sidebar.success("Đã mở khóa quyền quản trị!")
     st.sidebar.markdown("---")
 
-    # 1. Tải nhạc MP3 từ máy tính lên
-    st.sidebar.subheader("🎵 Tải nhạc MP3 từ máy tính")
+    # Tải nhạc MP3
+    st.sidebar.subheader("🎵 Tải nhạc MP3")
     uploaded_audio = st.sidebar.file_uploader(
         "Chọn file MP3 từ máy:", type=["mp3"]
     )
@@ -639,16 +645,16 @@ if is_admin:
             with open(AUDIO_FILE, "wb") as f:
                 f.write(uploaded_audio.getbuffer())
             log_upload("Nhạc MP3", uploaded_audio.name)
-            st.sidebar.success("Đã lưu file MP3 mới thành công!")
+            st.sidebar.success("Đã lưu vĩnh viễn file MP3!")
             st.rerun()
 
     if os.path.exists(AUDIO_FILE):
-        st.sidebar.caption("✅ Đã có file MP3 lưu trên hệ thống.")
+        st.sidebar.caption("✅ File nhạc MP3 đang được sử dụng.")
 
     st.sidebar.markdown("---")
 
-    # 2. Quản lý Link Mạng Xã Hội
-    st.sidebar.subheader("🔗 Cập nhật Link MXH")
+    # Link Mạng xã hội
+    st.sidebar.subheader("🔗 Link Mạng Xã Hội")
     fb_link = st.sidebar.text_input(
         "Link Facebook:", value=default_socials.get("facebook", "")
     )
@@ -667,25 +673,25 @@ if is_admin:
         }
         with open(SOCIAL_FILE, "w", encoding="utf-8") as f:
             json.dump(new_data, f, ensure_ascii=False, indent=4)
-        log_upload("Liên kết MXH", "Cập nhật các đường dẫn MXH")
-        st.sidebar.success("Đã cập nhật liên kết mới!")
+        log_upload("Liên kết MXH", "Cập nhật các liên kết MXH")
+        st.sidebar.success("Đã lưu vĩnh viễn link MXH!")
         st.rerun()
 
     st.sidebar.markdown("---")
 
-    # 3. Quản lý Ghi chú
-    st.sidebar.subheader("📝 Quản lý ghi chú")
+    # Quản lý Ghi chú
+    st.sidebar.subheader("📝 Ghi chú")
     new_note = st.sidebar.text_area("Cập nhật ghi chú mới:", value=saved_note)
     if st.sidebar.button("Lưu Ghi Chú"):
         with open(NOTE_FILE, "w", encoding="utf-8") as f:
             f.write(new_note)
-        log_upload("Ghi chú", f"Đã đổi nội dung ghi chú")
-        st.sidebar.success("Đã cập nhật ghi chú!")
+        log_upload("Ghi chú", "Đổi nội dung ghi chú")
+        st.sidebar.success("Đã lưu ghi chú mới!")
         st.rerun()
 
     st.sidebar.markdown("---")
 
-    # 4. Quản lý Bộ sưu tập & Xoá Ảnh
+    # Quản lý Ảnh Bộ sưu tập
     st.sidebar.subheader("🖼️ Quản lý hình ảnh")
     uploaded_files = st.sidebar.file_uploader(
         "Thêm ảnh mới:", type=["png", "jpg", "jpeg"], accept_multiple_files=True
@@ -697,11 +703,11 @@ if is_admin:
                 with open(save_path, "wb") as f:
                     f.write(u_file.getbuffer())
                 log_upload("Hình ảnh", u_file.name)
-            st.sidebar.success("Đã đăng tải ảnh!")
+            st.sidebar.success("Đã đăng tải và lưu ảnh!")
             st.rerun()
 
     if image_list:
-        st.sidebar.markdown("**Danh sách ảnh hiện tại (Xoá):**")
+        st.sidebar.markdown("**Danh sách ảnh hiện tại (Bấm ❌ để xóa):**")
         for img_name in image_list:
             col_img, col_btn = st.sidebar.columns([3, 1])
             col_img.caption(img_name)
@@ -713,20 +719,18 @@ if is_admin:
 
     st.sidebar.markdown("---")
 
-    # 5. Lịch sử Upload & Thay đổi
-    st.sidebar.subheader("📋 Lịch sửUpload / Thay đổi")
+    # Lịch sử chỉnh sửa
+    st.sidebar.subheader("📋 Lịch sử cập nhật")
     if os.path.exists(LOG_FILE):
         try:
             with open(LOG_FILE, "r", encoding="utf-8") as f:
                 logs = json.load(f)
                 if logs:
-                    for item in logs[:10]:  # Hiển thị 10 mục gần nhất
+                    for item in logs[:10]:
                         st.sidebar.caption(
                             f"⏱️ **{item['time']}**\n- [{item['category']}] {item['name']}"
                         )
                 else:
-                    st.sidebar.info("Chưa có lịch sử upload nào.")
+                    st.sidebar.info("Chưa có lịch sử.")
         except Exception:
-            st.sidebar.info("Chưa có lịch sử upload.")
-    else:
-        st.sidebar.info("Chưa có lịch sử upload.")
+            st.sidebar.info("Chưa có lịch sử.")
